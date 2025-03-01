@@ -4,6 +4,7 @@ import mongoose, { Schema, Document } from "mongoose";
 interface ILease extends Document {
   lessorName: string;
   natureOfLease: string;
+  period: string;
   agreementCode: string;
   leasePeriod: string[];
   lockingPeriod: string[];
@@ -37,6 +38,7 @@ interface ILease extends Document {
 const LeaseSchema: Schema = new Schema({
   lessorName: { type: String, required: true },
   natureOfLease: { type: String, required: true },
+  period: { type:String, required: true },
   agreementCode: { type: String, required: true, unique: true },
   leasePeriod: { type: [String], required: true },
   lockingPeriod: { type: [String], required: true },

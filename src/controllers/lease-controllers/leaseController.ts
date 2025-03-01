@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import dotenv from "dotenv";
 import leaseModel from "../../models/lease.model";
+import { Period } from "../../models/period.model";
 dotenv.config();
 
 export const LeaseController: RequestHandler = async (req, res) => {
@@ -78,5 +79,85 @@ export const DeleteLeaseController : RequestHandler = async (req, res) => {
   } catch (error) {
     console.error("Delete Lease error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+
+/**
+ * Create Period Controller
+ */
+export const PeriodController: RequestHandler = async (req, res) => {
+  try {
+    const { startDate, endDate, status } = req.body;
+      if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required' });
+    }
+
+    const newPeriod = new Period({ startDate, endDate, status });
+    await newPeriod.save();
+
+    res.status(201).json({ message: 'Period created successfully', data: newPeriod });
+  } catch (error) {
+    console.error('Create Period Error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Update Period Controller
+ */
+export const updatePeriodController: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, status } = req.body;
+
+    const updatedPeriod = await Period.findByIdAndUpdate(
+      id,
+      { startDate, endDate, status },
+      { new: true }
+    );
+
+    if (!updatedPeriod) {
+      return res.status(404).json({ message: 'Period not found' });
+    }
+
+    res.status(200).json({ message: 'Period updated successfully', data: updatedPeriod });
+  } catch (error) {
+    console.error('Update Period Error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Get All Periods Controller
+ */
+export const GetPeriodController: RequestHandler = async (req, res) => {
+  try {
+    const periods = await Period.find().sort({ createdAt: -1 });
+    res.status(200).json({ message: 'Periods fetched successfully', data: periods });
+  } catch (error) {
+    console.error('Get Periods Error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Delete Period Controller
+ */
+export const DeletePeriodController: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedPeriod = await Period.findByIdAndDelete(id);
+
+    if (!deletedPeriod) {
+      return res.status(404).json({ message: 'Period not found' });
+    }
+
+    res.status(200).json({ message: 'Period deleted successfully' });
+  } catch (error) {
+    console.error('Delete Period Error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
