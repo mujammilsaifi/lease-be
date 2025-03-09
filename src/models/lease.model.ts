@@ -4,6 +4,9 @@ import mongoose, { Schema, Document } from "mongoose";
 interface ILease extends Document {
   lessorName: string;
   natureOfLease: string;
+  leaseClosureDate?: string;  
+  remarks?: string;           
+  status: "active" | "close";
   period: string;
   agreementCode: string;
   leasePeriod: string[];
@@ -13,7 +16,7 @@ interface ILease extends Document {
   rentPaymentFrequency: string;
   rentAmount: number;
   rentPaymentDate: number;
-  securityDeposit?: number; // Optional
+  securityDeposit?: number; 
   discountingRates?: {
     dateRange: string[];
     rate: number;
@@ -38,6 +41,14 @@ interface ILease extends Document {
 const LeaseSchema: Schema = new Schema({
   lessorName: { type: String, required: true },
   natureOfLease: { type: String, required: true },
+  leaseClosureDate: { type: String, required: false},
+  remarks: { type: String, required: false},
+  status: {
+    type: String,
+    enum: ["active", "close"], 
+    default: "active",
+    required: false
+  },
   period: { type:String, required: true },
   agreementCode: { type: String, required: true, unique: true },
   leasePeriod: { type: [String], required: true },
@@ -47,9 +58,7 @@ const LeaseSchema: Schema = new Schema({
   rentPaymentFrequency: { type: String, required: true },
   rentAmount: { type: Number, required: true },
   rentPaymentDate: { type: Number, required: true },
-
-  // Optional fields
-  securityDeposit: { type: Number, required: false }, // Optional
+  securityDeposit: { type: Number, required: false }, 
   discountingRates: [
     {
       dateRange: { type: [String], required: true },
@@ -78,5 +87,4 @@ const LeaseSchema: Schema = new Schema({
   ],
 },{timestamps:true});
 
-// Export Mongoose Model
 export default mongoose.model<ILease>("Lease", LeaseSchema);
