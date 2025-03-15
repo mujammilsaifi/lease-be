@@ -1,10 +1,12 @@
 import express from "express";
-import { DeleteLeaseController, DeletePeriodController, GetLeaseController, GetPeriodController, LeaseController, PeriodController, updateLeaseController, updatePeriodController } from "../../controllers/lease-controllers/leaseController";
+import { DeleteLeaseController, DeletePeriodController, GetLeaseController, GetLeaseFormovementController, GetPeriodController, LeaseController, PeriodController, updateLeaseController, updatePeriodController } from "../../controllers/lease-controllers/leaseController";
 const router = express.Router();
 
 
 // Lease routes
 router.get("/lease", GetLeaseController);
+// Lease routes for movement
+router.get("/lease/movement", GetLeaseFormovementController);
 router.post("/lease", LeaseController);
 router.put("/lease/:id", updateLeaseController);
 router.delete("/lease/:id", DeleteLeaseController);

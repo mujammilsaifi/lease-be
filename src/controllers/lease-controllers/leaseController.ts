@@ -66,7 +66,24 @@ export const GetLeaseController : RequestHandler = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+export const GetLeaseFormovementController : RequestHandler = async (req, res) => {
+  const { startDate, endDate } = req.query;
+  try {
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+    const leases = await leaseModel.find({});
+    const filteredLeases = leases.filter((lease) => {
+      if (!lease.period) return false;     
+      const leasePeriodDate = new Date(lease.period.split("-").reverse().join("-"));       
+      return leasePeriodDate >= start && leasePeriodDate <= end;
+    });
 
+    res.status(200).json({ leases: filteredLeases });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: 'Error fetching lease data', error });
+  }
+};
 /**
  * Lease Delete Controller
  */
