@@ -4,8 +4,8 @@ import mongoose, { Schema, Document } from "mongoose";
 interface ILease extends Document {
   lessorName: string;
   natureOfLease: string;
-  leaseClosureDate?: string;  
-  remarks?: string;           
+  leaseClosureDate?: string;
+  remarks?: string;
   status: "active" | "close";
   period: string;
   agreementCode: string;
@@ -16,7 +16,7 @@ interface ILease extends Document {
   rentPaymentFrequency: string;
   rentAmount: number;
   rentPaymentDate: number;
-  securityDeposit?: number; 
+  securityDeposit?: number;
   discountingRates?: {
     dateRange: string[];
     rate: number;
@@ -40,6 +40,18 @@ interface ILease extends Document {
     dateRange: string[];
     percentage: number;
   }[];
+  cutOffDate?: string;
+  cutOffLeasePeriod?: string[];
+  leaseLiabilityStart?: number;
+  interestExpense?: number;
+  rentPaid?: number;
+  leaseLiabilityCutOff?: number;
+  rouStart?: number;
+  rentExpense?: number;
+  rouCutOff?: number;
+  cutOffSecurityDeposit?: number;
+  interestIncome?: number;
+  prepaidRent?: number;
 }
 
 // Mongoose Schema
@@ -132,9 +144,75 @@ const LeaseSchema: Schema = new Schema(
         percentage: { type: Number, required: true },
       },
     ],
+    cutOffDate: { type: String, required: false },
+    cutOffLeasePeriod: {
+      type: [String],
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    leaseLiabilityStart: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    interestExpense: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    rentPaid: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    leaseLiabilityCutOff: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    rouStart: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    rentExpense: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    rouCutOff: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    cutOffSecurityDeposit: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    interestIncome: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    prepaidRent: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
   },
   { timestamps: true }
 );
-
 
 export default mongoose.model<ILease>("Lease", LeaseSchema);
