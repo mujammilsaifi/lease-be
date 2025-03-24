@@ -42,16 +42,19 @@ interface ILease extends Document {
   }[];
   cutOffDate?: string;
   cutOffLeasePeriod?: string[];
-  leaseLiabilityStart?: number;
-  interestExpense?: number;
-  rentPaid?: number;
+  agreementBeginningLeaseLiability?: number;
+  agreementBeginningROU?: number;
+  interestExpenseBeginningTillCutOffDate?: number;
+  rentPaidBeginningTillCutOffDate?: number;
+  depreciationExpenseTillCutOffDate?: number;
   leaseLiabilityCutOff?: number;
-  rouStart?: number;
-  rentExpense?: number;
-  rouCutOff?: number;
-  cutOffSecurityDeposit?: number;
-  interestIncome?: number;
-  prepaidRent?: number;
+  cutOffDateROU?: number;
+  agreementBeginningDiscountedSecurityDeposit?: number;
+  agreementBeginningPrepaidRent?: number;
+  interestIncomeOnSDfromAgreementBeginningTillCutoffDate?: number;
+  depreciationExpenseOnPRTillCutOffDate?: number;
+  cutOffSecurityDeposit?:number,
+  cutOffDatePrepaidRent?:number
 }
 
 // Mongoose Schema
@@ -151,19 +154,31 @@ const LeaseSchema: Schema = new Schema(
         return !!this.cutOffDate;
       },
     },
-    leaseLiabilityStart: {
+    agreementBeginningLeaseLiability: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
       },
     },
-    interestExpense: {
+    agreementBeginningROU: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
       },
     },
-    rentPaid: {
+    interestExpenseBeginningTillCutOffDate: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    rentPaidBeginningTillCutOffDate: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    depreciationExpenseTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
@@ -175,19 +190,31 @@ const LeaseSchema: Schema = new Schema(
         return !!this.cutOffDate;
       },
     },
-    rouStart: {
+    cutOffDateROU: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
       },
     },
-    rentExpense: {
+    agreementBeginningDiscountedSecurityDeposit: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
       },
     },
-    rouCutOff: {
+    agreementBeginningPrepaidRent: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    interestIncomeOnSDfromAgreementBeginningTillCutoffDate: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate;
+      },
+    },
+    depreciationExpenseOnPRTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
@@ -199,18 +226,13 @@ const LeaseSchema: Schema = new Schema(
         return !!this.cutOffDate;
       },
     },
-    interestIncome: {
+    cutOffDatePrepaidRent:{
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
       },
     },
-    prepaidRent: {
-      type: Number,
-      required: function (this: ILease) {
-        return !!this.cutOffDate;
-      },
-    },
+    
   },
   { timestamps: true }
 );
