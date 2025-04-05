@@ -4,13 +4,28 @@ import leaseModel from "../../models/lease.model";
 import { Period } from "../../models/period.model";
 dotenv.config();
 
-export const LeaseController: RequestHandler = async (req, res) => {
+export const leaseController: RequestHandler = async (req, res) => {
   try {
     const leaseData = req.body;
+
     if (!Array.isArray(leaseData) || leaseData.length === 0) {
       return res.status(400).json({ error: "Invalid lease data provided" });
     }
-    const savedLeases = await leaseModel.insertMany(leaseData);
+
+    // Add versioning fields
+    const leasesWithVersioning = leaseData.map(lease => ({
+      ...lease,
+      versionNumber: 1, // Set initial version number
+    }));
+
+    const savedLeases = await leaseModel.insertMany(leasesWithVersioning);
+
+    // Update originalLeaseId to match _id after creation
+    await Promise.all(
+      savedLeases.map(lease =>
+        leaseModel.findByIdAndUpdate(lease._id, { originalLeaseId: lease._id })
+      )
+    );
 
     return res.status(201).json({
       message: "Leases created successfully",
@@ -38,6 +53,46 @@ export const LeaseController: RequestHandler = async (req, res) => {
   }
 };
 
+export const leaseModificationController: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const modifyData = req.body;
+    const originalData = await leaseModel.findById(id).lean();
+    if (!originalData) {
+      return res.status(404).json({ error: "Lease data not found" });
+    }
+    
+    if (!modifyData || typeof modifyData !== "object") {
+      return res.status(400).json({ error: "Invalid lease data provided" });
+    }
+    await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { new: true });
+    const newAgreementCode = `${originalData?.agreementCode}-v${(originalData?.versionNumber || 1) + 1}`;
+    const newLeaseData = {
+      ...originalData,
+      ...modifyData,
+      _id: undefined, // Remove old ID
+      agreementCode: newAgreementCode,
+      originalLeaseId: originalData?.originalLeaseId || originalData._id, // Track first lease
+      previousVersionId: originalData._id, // Link to previous version
+      versionNumber: (originalData?.versionNumber || 1) + 1, // Increment version
+      status: "active",
+    };
+
+    const savedLease = await leaseModel.create(newLeaseData);
+    return res.status(201).json({
+      message: "Lease modification added successfully",
+      data: savedLease,
+    });
+
+  } catch (error: any) {
+    console.error("Lease modification error:", error);
+    return res.status(500).json({
+      error: "An error occurred",
+      details: error.message || "Unknown error",
+    });
+  }
+};
+
 /**
  * Lease Update Controller
  */
@@ -57,16 +112,29 @@ export const updateLeaseController : RequestHandler = async (req, res) => {
 /**
  * Lease Get Controller
  */
-export const GetLeaseController : RequestHandler = async (req, res) => {
+export const getLeaseController: RequestHandler = async (req, res) => {
   try {
-    const leases = await leaseModel.find();
-    return res.status(200).json({ leases });
+    const leases = await leaseModel.find().lean();
+    const leaseMap = new Map();
+    leases.forEach(lease => {
+      const key = lease.originalLeaseId?.toString() || lease._id.toString();
+      if (!leaseMap.has(key)) {
+        leaseMap.set(key, { activeLease: null, previousVersions: [] });
+      }
+      if (lease.status === "active" || lease.status === "close") {
+        leaseMap.get(key).activeLease = lease;
+      } else {
+        leaseMap.get(key).previousVersions.push(lease);
+      }
+    });
+    const result = Array.from(leaseMap.values());
+    return res.status(200).json({ leases: result });
   } catch (error) {
     console.error("Get Lease error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const GetLeaseFormovementController : RequestHandler = async (req, res) => {
+export const getLeaseFormovementController : RequestHandler = async (req, res) => {
   const { startDate, endDate } = req.query;
   try {
     const start = new Date(startDate as string);
@@ -84,10 +152,11 @@ export const GetLeaseFormovementController : RequestHandler = async (req, res) =
     res.status(500).json({ message: 'Error fetching lease data', error });
   }
 };
+
 /**
  * Lease Delete Controller
  */
-export const DeleteLeaseController : RequestHandler = async (req, res) => {
+export const deleteLeaseController : RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const deletedLease = await leaseModel.findByIdAndDelete(id);
@@ -104,7 +173,7 @@ export const DeleteLeaseController : RequestHandler = async (req, res) => {
 /**
  * Create Period Controller
  */
-export const PeriodController: RequestHandler = async (req, res) => {
+export const periodController: RequestHandler = async (req, res) => {
   try {
     const { startDate, endDate, status } = req.body;
       if (!startDate || !endDate) {
@@ -149,7 +218,7 @@ export const updatePeriodController: RequestHandler = async (req, res) => {
 /**
  * Get All Periods Controller
  */
-export const GetPeriodController: RequestHandler = async (req, res) => {
+export const getPeriodController: RequestHandler = async (req, res) => {
   try {
     const periods = await Period.find().sort({ createdAt: -1 });
     res.status(200).json({ message: 'Periods fetched successfully', data: periods });
@@ -162,7 +231,7 @@ export const GetPeriodController: RequestHandler = async (req, res) => {
 /**
  * Delete Period Controller
  */
-export const DeletePeriodController: RequestHandler = async (req, res) => {
+export const deletePeriodController: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
 

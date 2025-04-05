@@ -2,11 +2,15 @@ import mongoose, { Schema, Document } from "mongoose";
 
 // Interface for Lease Document
 interface ILease extends Document {
+  selectedOptions: string[];
+  originalLeaseId?: mongoose.Types.ObjectId;
+  previousVersionId?: mongoose.Types.ObjectId;
+  versionNumber: number;
   lessorName: string;
   natureOfLease: string;
   leaseClosureDate?: string;
   remarks?: string;
-  status: "active" | "close";
+  status: "active" | "close" | "modified";
   period: string;
   agreementCode: string;
   leasePeriod: string[];
@@ -54,24 +58,31 @@ interface ILease extends Document {
   interestIncomeOnSDfromAgreementBeginningTillCutoffDate?: number;
   depreciationExpenseOnPRTillCutOffDate?: number;
   cutOffSecurityDeposit?:number,
-  cutOffDatePrepaidRent?:number
+  cutOffDatePrepaidRent?:number,
+  leaseModificationDate:string,
 }
 
 // Mongoose Schema
 const LeaseSchema: Schema = new Schema(
   {
+    selectedOptions: {
+      type: [String],
+    },
+    originalLeaseId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
+    previousVersionId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
+    versionNumber: { type: Number, required: true },
     lessorName: { type: String, required: true },
     natureOfLease: { type: String, required: true },
     leaseClosureDate: { type: String, required: false },
     remarks: { type: String, required: false },
     status: {
       type: String,
-      enum: ["active", "close"],
+      enum: ["active", "close","modified"],
       default: "active",
       required: false,
     },
     period: { type: String, required: true },
-    agreementCode: { type: String, required: true, unique: true },
+    agreementCode: { type: String, required: true},
     leasePeriod: { type: [String], required: true },
     lockingPeriod: { type: [String], required: true },
     leaseWorkingPeriod: { type: [String], required: true },
@@ -232,7 +243,7 @@ const LeaseSchema: Schema = new Schema(
         return !!this.cutOffDate;
       },
     },
-    
+    leaseModificationDate:{ type: String, required: false },    
   },
   { timestamps: true }
 );
