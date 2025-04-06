@@ -6,6 +6,7 @@ interface ILease extends Document {
   originalLeaseId?: mongoose.Types.ObjectId;
   previousVersionId?: mongoose.Types.ObjectId;
   versionNumber: number;
+  scope:number;
   lessorName: string;
   natureOfLease: string;
   leaseClosureDate?: string;
@@ -71,6 +72,7 @@ const LeaseSchema: Schema = new Schema(
     originalLeaseId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
     previousVersionId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
     versionNumber: { type: Number, required: true },
+    scope: { type: Number, required: true },
     lessorName: { type: String, required: true },
     natureOfLease: { type: String, required: true },
     leaseClosureDate: { type: String, required: false },
