@@ -156,12 +156,33 @@ export const getLeaseFormovementController : RequestHandler = async (req, res) =
 /**
  * Lease Delete Controller
  */
-export const deleteLeaseController : RequestHandler = async (req, res) => {
+export const deleteLeaseController: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // First find the lease we're about to delete
+    const leaseToDelete = await leaseModel.findById(id);
+    if (!leaseToDelete) return res.status(404).json({ message: "Lease not found" });
+
+    // If this is a versioned lease (not original), find and reactivate the previous version
+    if (leaseToDelete.previousVersionId) {
+      const previousVersion = await leaseModel.findById(leaseToDelete.previousVersionId);
+      if (previousVersion) {
+        // Update the previous version to be active again
+        previousVersion.status = "active";
+        await previousVersion.save();
+      }
+    }
+
+    // Now delete the requested lease
     const deletedLease = await leaseModel.findByIdAndDelete(id);
-    if (!deletedLease) return res.status(404).json({ message: "Lease not found" });
-    return res.status(200).json({ message: "Lease deleted successfully", data: deletedLease });
+    
+    return res.status(200).json({ 
+      message: "Lease deleted successfully", 
+      data: deletedLease,
+      previousVersionReactivated: !!leaseToDelete.previousVersionId
+    });
+    
   } catch (error) {
     console.error("Delete Lease error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -234,7 +255,6 @@ export const getPeriodController: RequestHandler = async (req, res) => {
 export const deletePeriodController: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
-
     const deletedPeriod = await Period.findByIdAndDelete(id);
 
     if (!deletedPeriod) {
