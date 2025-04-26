@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 // Interface for Lease Document
 interface ILease extends Document {
   selectedOptions: string[];
+  userId: mongoose.Types.ObjectId;
   originalLeaseId?: mongoose.Types.ObjectId;
   previousVersionId?: mongoose.Types.ObjectId;
   versionNumber: number;
@@ -69,6 +70,7 @@ const LeaseSchema: Schema = new Schema(
     selectedOptions: {
       type: [String],
     },
+    userId:{ type: Schema.Types.ObjectId, ref: "User" },
     originalLeaseId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
     previousVersionId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
     versionNumber: { type: Number, required: true },

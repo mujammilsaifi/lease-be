@@ -114,7 +114,7 @@ export const updateLeaseController : RequestHandler = async (req, res) => {
  */
 export const getLeaseController: RequestHandler = async (req, res) => {
   try {
-    const leases = await leaseModel.find().lean();
+    const leases = await leaseModel.find().sort({ _id: -1 }).lean();
     const leaseMap = new Map();
     leases.forEach(lease => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
