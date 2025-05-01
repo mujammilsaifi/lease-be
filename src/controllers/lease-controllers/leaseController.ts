@@ -114,7 +114,8 @@ export const updateLeaseController : RequestHandler = async (req, res) => {
  */
 export const getLeaseController: RequestHandler = async (req, res) => {
   try {
-    const leases = await leaseModel.find().sort({ _id: -1 }).lean();
+    const { userId } = req.query;
+    const leases = await leaseModel.find({userId}).sort({ _id: -1 }).lean();
     const leaseMap = new Map();
     leases.forEach(lease => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
@@ -135,11 +136,11 @@ export const getLeaseController: RequestHandler = async (req, res) => {
   }
 };
 export const getLeaseFormovementController : RequestHandler = async (req, res) => {
-  const { startDate, endDate } = req.query;
+  const { startDate, endDate,userId } = req.query;
   try {
     const start = new Date(startDate as string);
     const end = new Date(endDate as string);
-    const leases = await leaseModel.find({});
+    const leases = await leaseModel.find({userId});
     const filteredLeases = leases.filter((lease) => {
       if (!lease.period) return false;     
       const leasePeriodDate = new Date(lease.period.split("-").reverse().join("-"));       
