@@ -135,22 +135,39 @@ export const getLeaseController: RequestHandler = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const getLeaseFormovementController : RequestHandler = async (req, res) => {
-  const { startDate, endDate,userId } = req.query;
+export const getLeaseFormovementController: RequestHandler = async (req, res) => {
+  const { startDate, endDate, userId } = req.query;
+console.log(startDate, endDate, userId )
   try {
-    const start = new Date(startDate as string);
-    const end = new Date(endDate as string);
-    const leases = await leaseModel.find({userId});
-    const filteredLeases = leases.filter((lease) => {
-      if (!lease.period) return false;     
-      const leasePeriodDate = new Date(lease.period.split("-").reverse().join("-"));       
-      return leasePeriodDate >= start && leasePeriodDate <= end;
+      const query = {
+      userId,
+      "leaseWorkingPeriod.0": { $lte: endDate },
+      "leaseWorkingPeriod.1": { $gte: startDate }
+    };
+
+    const leases = await leaseModel.find(query).sort({ _id: -1 }).lean();
+
+    const leaseMap = new Map();
+
+    leases.forEach(lease => {
+      const key = lease.originalLeaseId?.toString() || lease._id.toString();
+
+      if (!leaseMap.has(key)) {
+        leaseMap.set(key, { activeLease: null, previousVersions: [] });
+      }
+
+      if (lease.status === "active" || lease.status === "close") {
+        leaseMap.get(key).activeLease = lease;
+      } else {
+        leaseMap.get(key).previousVersions.push(lease);
+      }
     });
 
-    res.status(200).json({ leases: filteredLeases });
+    const result = Array.from(leaseMap.values());
+    res.status(200).json({ leases: result });
   } catch (error) {
-    console.log(error)
-    res.status(500).json({ message: 'Error fetching lease data', error });
+    console.error("Error fetching lease data:", error);
+    res.status(500).json({ message: "Error fetching lease data", error });
   }
 };
 
