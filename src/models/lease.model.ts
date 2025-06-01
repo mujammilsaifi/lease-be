@@ -7,14 +7,13 @@ interface ILease extends Document {
   originalLeaseId?: string;
   previousVersionId?: mongoose.Types.ObjectId;
   versionNumber: number;
-  scope?:number;
+  scope?: number;
   lessorName: string;
   natureOfLease: string;
   leaseClosureDate?: string;
   remarks?: string;
   status: "active" | "close" | "modified";
   period: string;
-  agreementCode: string;
   leasePeriod: string[];
   lockingPeriod: string[];
   leaseWorkingPeriod: string[];
@@ -27,7 +26,6 @@ interface ILease extends Document {
     dateRange: string[];
     rate: number;
   }[];
-  natureOfRent: "adhoc-type" | "systematic";
   rentAdhocWise?: {
     date: string;
     rent: number;
@@ -59,9 +57,9 @@ interface ILease extends Document {
   agreementBeginningPrepaidRent?: number;
   interestIncomeOnSDfromAgreementBeginningTillCutoffDate?: number;
   depreciationExpenseOnPRTillCutOffDate?: number;
-  cutOffSecurityDeposit?:number,
-  cutOffDatePrepaidRent?:number,
-  leaseModificationDate:string,
+  cutOffSecurityDeposit?: number;
+  cutOffDatePrepaidRent?: number;
+  leaseModificationDate: string;
 }
 
 // Mongoose Schema
@@ -70,9 +68,17 @@ const LeaseSchema: Schema = new Schema(
     selectedOptions: {
       type: [String],
     },
-    userId:{type: String ,required: true},
-    originalLeaseId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
-    previousVersionId: { type: Schema.Types.ObjectId, ref: "Lease", default: null },
+    userId: { type: String, required: true },
+    originalLeaseId: {
+      type: Schema.Types.ObjectId,
+      ref: "Lease",
+      default: null,
+    },
+    previousVersionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Lease",
+      default: null,
+    },
     versionNumber: { type: Number, required: true },
     scope: { type: Number, required: false },
     lessorName: { type: String, required: true },
@@ -81,65 +87,35 @@ const LeaseSchema: Schema = new Schema(
     remarks: { type: String, required: false },
     status: {
       type: String,
-      enum: ["active", "close","modified"],
+      enum: ["active", "close", "modified"],
       default: "active",
       required: false,
     },
     period: { type: String, required: true },
-    agreementCode: { type: String, required: true},
     leasePeriod: { type: [String], required: true },
     lockingPeriod: { type: [String], required: true },
     leaseWorkingPeriod: { type: [String], required: true },
     rentPaymentType: {
       type: String,
-      required: function (this: ILease) {
-        return this.natureOfRent === "systematic";
-      },
+      required: true,
     },
     rentPaymentFrequency: {
       type: String,
-      required: function (this: ILease) {
-        return this.natureOfRent === "systematic";
-      },
+      required: true,
     },
     rentAmount: {
       type: Number,
-      required: function (this: ILease) {
-        return this.natureOfRent === "systematic";
-      },
+      required: true,
     },
     rentPaymentDate: {
       type: Number,
-      required: function (this: ILease) {
-        return this.natureOfRent === "systematic";
-      },
+      required: true,
     },
     securityDeposit: { type: Number, required: false },
     discountingRates: [
       {
         dateRange: { type: [String], required: true },
         rate: { type: Number, required: true },
-      },
-    ],
-    natureOfRent: {
-      type: String,
-      enum: ["adhoc-type", "systematic"],
-      required: true,
-    },
-    rentAdhocWise: [
-      {
-        date: {
-          type: String,
-          required: function (this: ILease) {
-            return this.natureOfRent === "adhoc-type";
-          },
-        },
-        rent: {
-          type: Number,
-          required: function (this: ILease) {
-            return this.natureOfRent === "adhoc-type";
-          },
-        },
       },
     ],
     systematicEscalations: [
@@ -241,15 +217,24 @@ const LeaseSchema: Schema = new Schema(
         return !!this.cutOffDate;
       },
     },
-    cutOffDatePrepaidRent:{
+    cutOffDatePrepaidRent: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate;
       },
     },
-    leaseModificationDate:{ type: String, required: false },    
+    leaseModificationDate: { type: String, required: false },
   },
   { timestamps: true }
+);
+LeaseSchema.index(
+  { lessorName: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["active", "close"] },
+    },
+  }
 );
 
 export default mongoose.model<ILease>("Lease", LeaseSchema);

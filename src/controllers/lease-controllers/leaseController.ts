@@ -2,6 +2,7 @@ import { RequestHandler } from "express";
 import dotenv from "dotenv";
 import leaseModel from "../../models/lease.model";
 import { Period } from "../../models/period.model";
+import mongoose from "mongoose";
 dotenv.config();
 
 export const leaseController: RequestHandler = async (req, res) => {
@@ -13,7 +14,7 @@ export const leaseController: RequestHandler = async (req, res) => {
     }
 
     // Add versioning fields
-    const leasesWithVersioning = leaseData.map(lease => ({
+    const leasesWithVersioning = leaseData.map((lease) => ({
       ...lease,
       versionNumber: 1, // Set initial version number
     }));
@@ -22,7 +23,7 @@ export const leaseController: RequestHandler = async (req, res) => {
 
     // Update originalLeaseId to match _id after creation
     await Promise.all(
-      savedLeases.map(lease =>
+      savedLeases.map((lease) =>
         leaseModel.findByIdAndUpdate(lease._id, { originalLeaseId: lease._id })
       )
     );
@@ -31,7 +32,6 @@ export const leaseController: RequestHandler = async (req, res) => {
       message: "Leases created successfully",
       data: savedLeases,
     });
-
   } catch (error: any) {
     console.error("Lease creation error:", error);
     if (error.name === "ValidationError") {
@@ -54,38 +54,58 @@ export const leaseController: RequestHandler = async (req, res) => {
 };
 
 export const leaseModificationController: RequestHandler = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { id } = req.params;
     const modifyData = req.body;
-    const originalData = await leaseModel.findById(id).lean();
+    const originalData = await leaseModel.findById(id).lean().session(session);
     if (!originalData) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ error: "Lease data not found" });
     }
-    
+
     if (!modifyData || typeof modifyData !== "object") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ error: "Invalid lease data provided" });
     }
-    await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { new: true });
-    const newAgreementCode = `${originalData?.agreementCode}-v${(originalData?.versionNumber || 1) + 1}`;
+    await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { session });
+
     const newLeaseData = {
       ...originalData,
       ...modifyData,
-      _id: undefined, // Remove old ID
-      agreementCode: newAgreementCode,
-      originalLeaseId: originalData?.originalLeaseId || originalData._id, // Track first lease
-      previousVersionId: originalData._id, // Link to previous version
-      versionNumber: (originalData?.versionNumber || 1) + 1, // Increment version
+      _id: undefined,
+      originalLeaseId: originalData.originalLeaseId || originalData._id,
+      previousVersionId: originalData._id,
+      versionNumber: (originalData.versionNumber || 1) + 1,
       status: "active",
     };
 
-    const savedLease = await leaseModel.create(newLeaseData);
+    const savedLease = await leaseModel.create([newLeaseData], { session });
+
+    await session.commitTransaction();
+    session.endSession();
     return res.status(201).json({
       message: "Lease modification added successfully",
-      data: savedLease,
+      data: savedLease[0],
     });
-
   } catch (error: any) {
-    console.error("Lease modification error:", error);
+    console.error("Lease creation error:", error);
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        error: "Validation Error",
+        details: Object.values(error.errors).map((err: any) => err.message),
+      });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "Duplicate entry detected",
+        details: error.keyValue,
+      });
+    }
     return res.status(500).json({
       error: "An error occurred",
       details: error.message || "Unknown error",
@@ -96,13 +116,41 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
 /**
  * Lease Update Controller
  */
-export const updateLeaseController : RequestHandler = async (req, res) => {
+export const updateLeaseController: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
-    const updatedLease = await leaseModel.findByIdAndUpdate(id, updateData, { new: true });
-    if (!updatedLease) return res.status(404).json({ message: "Lease not found" });
-    return res.status(200).json({ message: "Lease updated successfully", data: updatedLease });
+    const updateData = { ...req.body };
+
+    // Step 1: Find existing lease
+    const existingLease = await leaseModel.findById(id);
+    if (!existingLease) {
+      return res.status(404).json({ message: "Lease not found" });
+    }
+
+    const updateQuery: any = { $set: updateData };
+
+    // Step 2: If transitioning from closed to active
+    if (existingLease.status === "close" && updateData.status === "active") {
+      // Remove conflicting keys from $set if they exist
+      delete updateQuery.$set.leaseClosureDate;
+      delete updateQuery.$set.remarks;
+
+      // Add to $unset to clear them
+      updateQuery.$unset = {
+        leaseClosureDate: "",
+        remarks: "",
+      };
+    }
+
+    // Step 3: Perform update
+    const updatedLease = await leaseModel.findByIdAndUpdate(id, updateQuery, {
+      new: true,
+    });
+
+    return res.status(200).json({
+      message: "Lease updated successfully",
+      data: updatedLease,
+    });
   } catch (error) {
     console.error("Update Lease error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -115,9 +163,9 @@ export const updateLeaseController : RequestHandler = async (req, res) => {
 export const getLeaseController: RequestHandler = async (req, res) => {
   try {
     const { userId } = req.query;
-    const leases = await leaseModel.find({userId}).sort({ _id: -1 }).lean();
+    const leases = await leaseModel.find({ userId }).sort({ _id: -1 }).lean();
     const leaseMap = new Map();
-    leases.forEach(lease => {
+    leases.forEach((lease) => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
       if (!leaseMap.has(key)) {
         leaseMap.set(key, { activeLease: null, previousVersions: [] });
@@ -135,21 +183,24 @@ export const getLeaseController: RequestHandler = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const getLeaseFormovementController: RequestHandler = async (req, res) => {
+export const getLeaseFormovementController: RequestHandler = async (
+  req,
+  res
+) => {
   const { startDate, endDate, userId } = req.query;
-console.log(startDate, endDate, userId )
+
   try {
-      const query = {
+    const query = {
       userId,
       "leaseWorkingPeriod.0": { $lte: endDate },
-      "leaseWorkingPeriod.1": { $gte: startDate }
+      "leaseWorkingPeriod.1": { $gte: startDate },
     };
 
     const leases = await leaseModel.find(query).sort({ _id: -1 }).lean();
 
     const leaseMap = new Map();
 
-    leases.forEach(lease => {
+    leases.forEach((lease) => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
 
       if (!leaseMap.has(key)) {
@@ -177,14 +228,17 @@ console.log(startDate, endDate, userId )
 export const deleteLeaseController: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // First find the lease we're about to delete
     const leaseToDelete = await leaseModel.findById(id);
-    if (!leaseToDelete) return res.status(404).json({ message: "Lease not found" });
+    if (!leaseToDelete)
+      return res.status(404).json({ message: "Lease not found" });
 
     // If this is a versioned lease (not original), find and reactivate the previous version
     if (leaseToDelete.previousVersionId) {
-      const previousVersion = await leaseModel.findById(leaseToDelete.previousVersionId);
+      const previousVersion = await leaseModel.findById(
+        leaseToDelete.previousVersionId
+      );
       if (previousVersion) {
         // Update the previous version to be active again
         previousVersion.status = "active";
@@ -194,20 +248,17 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
 
     // Now delete the requested lease
     const deletedLease = await leaseModel.findByIdAndDelete(id);
-    
-    return res.status(200).json({ 
-      message: "Lease deleted successfully", 
+
+    return res.status(200).json({
+      message: "Lease deleted successfully",
       data: deletedLease,
-      previousVersionReactivated: !!leaseToDelete.previousVersionId
+      previousVersionReactivated: !!leaseToDelete.previousVersionId,
     });
-    
   } catch (error) {
     console.error("Delete Lease error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
 
 /**
  * Create Period Controller
@@ -215,17 +266,21 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
 export const periodController: RequestHandler = async (req, res) => {
   try {
     const { startDate, endDate, status } = req.body;
-      if (!startDate || !endDate) {
-      return res.status(400).json({ message: 'Start date and end date are required' });
+    if (!startDate || !endDate) {
+      return res
+        .status(400)
+        .json({ message: "Start date and end date are required" });
     }
 
     const newPeriod = new Period({ startDate, endDate, status });
     await newPeriod.save();
 
-    res.status(201).json({ message: 'Period created successfully', data: newPeriod });
+    res
+      .status(201)
+      .json({ message: "Period created successfully", data: newPeriod });
   } catch (error) {
-    console.error('Create Period Error:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Create Period Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -244,13 +299,15 @@ export const updatePeriodController: RequestHandler = async (req, res) => {
     );
 
     if (!updatedPeriod) {
-      return res.status(404).json({ message: 'Period not found' });
+      return res.status(404).json({ message: "Period not found" });
     }
 
-    res.status(200).json({ message: 'Period updated successfully', data: updatedPeriod });
+    res
+      .status(200)
+      .json({ message: "Period updated successfully", data: updatedPeriod });
   } catch (error) {
-    console.error('Update Period Error:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Update Period Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -260,10 +317,12 @@ export const updatePeriodController: RequestHandler = async (req, res) => {
 export const getPeriodController: RequestHandler = async (req, res) => {
   try {
     const periods = await Period.find().sort({ createdAt: -1 });
-    res.status(200).json({ message: 'Periods fetched successfully', data: periods });
+    res
+      .status(200)
+      .json({ message: "Periods fetched successfully", data: periods });
   } catch (error) {
-    console.error('Get Periods Error:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Get Periods Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -276,12 +335,12 @@ export const deletePeriodController: RequestHandler = async (req, res) => {
     const deletedPeriod = await Period.findByIdAndDelete(id);
 
     if (!deletedPeriod) {
-      return res.status(404).json({ message: 'Period not found' });
+      return res.status(404).json({ message: "Period not found" });
     }
 
-    res.status(200).json({ message: 'Period deleted successfully' });
+    res.status(200).json({ message: "Period deleted successfully" });
   } catch (error) {
-    console.error('Delete Period Error:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Delete Period Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
