@@ -187,34 +187,57 @@ export const getLeaseFormovementController: RequestHandler = async (
   req,
   res
 ) => {
-  const { startDate, endDate, userId } = req.query;
+  const { endDate, userId } = req.query;
 
   try {
-    const query = {
-      userId,
-      "leaseWorkingPeriod.0": { $lte: endDate },
-      "leaseWorkingPeriod.1": { $gte: startDate },
-    };
+    // 1. First fetch all leases for the user
+    const allLeases = await leaseModel
+      .find({ userId })
+      .sort({ _id: -1 })
+      .lean();
 
-    const leases = await leaseModel.find(query).sort({ _id: -1 }).lean();
+    // 2. Group leases by their originalLeaseId
+    const leaseGroups = new Map<string, any[]>();
 
-    const leaseMap = new Map();
-
-    leases.forEach((lease) => {
+    allLeases.forEach((lease) => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
-
-      if (!leaseMap.has(key)) {
-        leaseMap.set(key, { activeLease: null, previousVersions: [] });
+      if (!leaseGroups.has(key)) {
+        leaseGroups.set(key, []);
       }
-
-      if (lease.status === "active" || lease.status === "close") {
-        leaseMap.get(key).activeLease = lease;
-      } else {
-        leaseMap.get(key).previousVersions.push(lease);
-      }
+      leaseGroups.get(key)!.push(lease);
     });
 
-    const result = Array.from(leaseMap.values());
+    const result = [];
+
+    // 3. Process each lease group
+    for (const [key, group] of leaseGroups.entries()) {
+      // Sort versions within group by versionNumber descending (latest first)
+      group.sort((a, b) => b.versionNumber - a.versionNumber);
+
+      const latestVersion = group[0];
+      const versionOne = group.find((l) => l.versionNumber === 1);
+      const versionOneStartDate = new Date(versionOne?.leaseWorkingPeriod?.[0]);
+      const queryEndDate = new Date(endDate as string);
+
+      if (versionOneStartDate < queryEndDate) {
+        let activeLease = group.find(
+          (lease) => lease.status === "active" || lease.status === "close"
+        );
+
+        // If no active lease found, use latest version as active
+        if (!activeLease) activeLease = latestVersion;
+
+        const previousVersions = group.filter(
+          (lease) => lease._id.toString() !== activeLease!._id.toString()
+        );
+
+        result.push({
+          activeLease,
+          previousVersions,
+        });
+      }
+    }
+
     res.status(200).json({ leases: result });
   } catch (error) {
     console.error("Error fetching lease data:", error);
