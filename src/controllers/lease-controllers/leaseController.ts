@@ -187,7 +187,7 @@ export const getLeaseFormovementController: RequestHandler = async (
   req,
   res
 ) => {
-  const { endDate, userId } = req.query;
+  const { startDate, endDate, userId } = req.query;
 
   try {
     // 1. First fetch all leases for the user
@@ -218,6 +218,16 @@ export const getLeaseFormovementController: RequestHandler = async (
       const versionOne = group.find((l) => l.versionNumber === 1);
       const versionOneStartDate = new Date(versionOne?.leaseWorkingPeriod?.[0]);
       const queryEndDate = new Date(endDate as string);
+      const queryStartDate = new Date(startDate as string);
+
+      // Skip condition: if queryStartDate <= cutoffDate
+      if (versionOne?.cutOffDate) {
+        const versionOneCutOffDate = new Date(versionOne?.cutOffDate);
+       
+        if (queryStartDate <= versionOneCutOffDate) {
+          continue; // skip this group
+        }
+      }
 
       if (versionOneStartDate < queryEndDate) {
         let activeLease = group.find(
