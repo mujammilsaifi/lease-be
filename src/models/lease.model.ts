@@ -1,3 +1,4 @@
+import e from "express";
 import mongoose, { Schema, Document } from "mongoose";
 
 // Interface for Lease Document
@@ -20,6 +21,7 @@ interface ILease extends Document {
   rentPaymentType: string;
   rentPaymentFrequency: string;
   rentAmount: number;
+  frequencyForInterestCalculation?: "monthly" | "daily";
   rentPaymentDate: number;
   securityDeposit?: number;
   leaseEqualizationPertaining?: number;
@@ -108,6 +110,11 @@ const LeaseSchema: Schema = new Schema(
     rentAmount: {
       type: Number,
       required: true,
+    },
+    frequencyForInterestCalculation: {
+      type: String,
+      enum: ["daily", "monthly"],
+      required: false,
     },
     rentPaymentDate: {
       type: Number,
