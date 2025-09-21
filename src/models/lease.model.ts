@@ -1,4 +1,3 @@
-import e from "express";
 import mongoose, { Schema, Document } from "mongoose";
 
 // Interface for Lease Document
@@ -120,7 +119,7 @@ const LeaseSchema: Schema = new Schema(
     transitionAdjustmentType: {
       type: String,
       enum: ["prospective", "retrospective"],
-      required: false,
+      required: false, // Make this field optional
     },
     rentPaymentDate: {
       type: Number,
@@ -159,37 +158,49 @@ const LeaseSchema: Schema = new Schema(
     cutOffLeasePeriod: {
       type: [String],
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     agreementBeginningLeaseLiability: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     agreementBeginningROU: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     interestExpenseBeginningTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     rentPaidBeginningTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     depreciationExpenseTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     leaseLiabilityCutOff: {
@@ -207,25 +218,33 @@ const LeaseSchema: Schema = new Schema(
     agreementBeginningDiscountedSecurityDeposit: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     agreementBeginningPrepaidRent: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     interestIncomeOnSDfromAgreementBeginningTillCutoffDate: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     depreciationExpenseOnPRTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     cutOffSecurityDeposit: {
