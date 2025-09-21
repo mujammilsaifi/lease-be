@@ -22,6 +22,7 @@ interface ILease extends Document {
   rentPaymentFrequency: string;
   rentAmount: number;
   frequencyForInterestCalculation?: "monthly" | "daily";
+  transitionAdjustmentType?: "prospective" | "retrospective";
   rentPaymentDate: number;
   securityDeposit?: number;
   leaseEqualizationPertaining?: number;
@@ -114,6 +115,11 @@ const LeaseSchema: Schema = new Schema(
     frequencyForInterestCalculation: {
       type: String,
       enum: ["daily", "monthly"],
+      required: false,
+    },
+    transitionAdjustmentType: {
+      type: String,
+      enum: ["prospective", "retrospective"],
       required: false,
     },
     rentPaymentDate: {
