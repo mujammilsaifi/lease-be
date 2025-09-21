@@ -63,7 +63,7 @@ interface ILease extends Document {
   depreciationExpenseOnPRTillCutOffDate?: number;
   cutOffSecurityDeposit?: number;
   cutOffDatePrepaidRent?: number;
-  leaseModificationDate: string;
+  leaseModificationDate?: string;
 }
 
 // Mongoose Schema
