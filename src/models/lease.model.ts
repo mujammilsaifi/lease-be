@@ -250,13 +250,17 @@ const LeaseSchema: Schema = new Schema(
     cutOffSecurityDeposit: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     cutOffDatePrepaidRent: {
       type: Number,
       required: function (this: ILease) {
-        return !!this.cutOffDate;
+        return (
+          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
+        );
       },
     },
     leaseModificationDate: { type: String, required: false },
