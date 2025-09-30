@@ -21,7 +21,8 @@ interface ILease extends Document {
   rentPaymentFrequency: string;
   rentAmount: number;
   frequencyForInterestCalculation?: "monthly" | "daily";
-  transitionAdjustmentType?: "prospective" | "retrospective";
+  transitionType?: "prospective" | "retrospective";
+  transitionDiscountAdjustment?: "no" | "yes";
   rentPaymentDate: number;
   securityDeposit?: number;
   leaseEqualizationPertaining?: number;
@@ -116,10 +117,15 @@ const LeaseSchema: Schema = new Schema(
       enum: ["daily", "monthly"],
       required: false,
     },
-    transitionAdjustmentType: {
+    transitionType: {
       type: String,
       enum: ["prospective", "retrospective"],
       required: false, // Make this field optional
+    },
+    transitionDiscountAdjustment: {
+      type: String,
+      enum: ["no", "yes"],
+      required: false,
     },
     rentPaymentDate: {
       type: Number,
@@ -158,49 +164,37 @@ const LeaseSchema: Schema = new Schema(
     cutOffLeasePeriod: {
       type: [String],
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     agreementBeginningLeaseLiability: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     agreementBeginningROU: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     interestExpenseBeginningTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     rentPaidBeginningTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     depreciationExpenseTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     leaseLiabilityCutOff: {
@@ -218,49 +212,37 @@ const LeaseSchema: Schema = new Schema(
     agreementBeginningDiscountedSecurityDeposit: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     agreementBeginningPrepaidRent: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     interestIncomeOnSDfromAgreementBeginningTillCutoffDate: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     depreciationExpenseOnPRTillCutOffDate: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     cutOffSecurityDeposit: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     cutOffDatePrepaidRent: {
       type: Number,
       required: function (this: ILease) {
-        return (
-          !!this.cutOffDate && this.transitionAdjustmentType !== "prospective"
-        );
+        return !!this.cutOffDate && this.transitionType !== "prospective";
       },
     },
     leaseModificationDate: { type: String, required: false },
