@@ -73,9 +73,10 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "Invalid lease data provided" });
     }
     await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { session });
-
     const newLeaseData = {
-      ...originalData,
+      userId: originalData.userId,
+      leasePeriod: originalData.leasePeriod,
+      lockingPeriod: originalData.lockingPeriod,
       ...modifyData,
       _id: undefined,
       originalLeaseId: originalData.originalLeaseId || originalData._id,
@@ -223,7 +224,7 @@ export const getLeaseFormovementController: RequestHandler = async (
       // Skip condition: if queryStartDate <= cutoffDate
       if (versionOne?.cutOffDate) {
         const versionOneCutOffDate = new Date(versionOne?.cutOffDate);
-       
+
         if (queryStartDate <= versionOneCutOffDate) {
           continue; // skip this group
         }

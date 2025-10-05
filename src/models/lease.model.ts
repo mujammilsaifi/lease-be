@@ -56,6 +56,7 @@ interface ILease extends Document {
   interestExpenseBeginningTillCutOffDate?: number;
   rentPaidBeginningTillCutOffDate?: number;
   depreciationExpenseTillCutOffDate?: number;
+  modificationAdjustmentInROUWithProspective?: number;
   leaseLiabilityCutOff?: number;
   cutOffDateROU?: number;
   agreementBeginningDiscountedSecurityDeposit?: number;
@@ -192,6 +193,12 @@ const LeaseSchema: Schema = new Schema(
       },
     },
     depreciationExpenseTillCutOffDate: {
+      type: Number,
+      required: function (this: ILease) {
+        return !!this.cutOffDate && this.transitionType !== "prospective";
+      },
+    },
+    modificationAdjustmentInROUWithProspective: {
       type: Number,
       required: function (this: ILease) {
         return !!this.cutOffDate && this.transitionType !== "prospective";
