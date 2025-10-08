@@ -8,9 +8,29 @@ dotenv.config();
 export const leaseController: RequestHandler = async (req, res) => {
   try {
     const leaseData = req.body;
-
     if (!Array.isArray(leaseData) || leaseData.length === 0) {
       return res.status(400).json({ error: "Invalid lease data provided" });
+    }
+
+    // Check for existing leases with same user and lessor name
+    for (const lease of leaseData) {
+      const existingLease = await leaseModel.findOne({
+        userId: lease.userId,
+        $expr: {
+          $regexMatch: {
+            input: { $trim: { input: "$lessorName" } },
+            regex: `^${lease.lessorName.trim()}$`,
+            options: "i"
+          }
+        }
+      });
+      
+
+      if (existingLease) {
+        return res.status(400).json({
+          error: `Lease with lessor name "${lease.lessorName}" already exists for this user.`
+        });
+      }
     }
 
     // Add versioning fields
@@ -126,6 +146,21 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     const existingLease = await leaseModel.findById(id);
     if (!existingLease) {
       return res.status(404).json({ message: "Lease not found" });
+    }
+
+    // Check if lessorName is being updated and if it would cause a duplicate
+    if (updateData.lessorName && updateData.lessorName !== existingLease.lessorName) {
+      const duplicateLease = await leaseModel.findOne({
+        userId: existingLease.userId,
+        lessorName: { $regex: new RegExp(`^${updateData.lessorName.trim()}$`, 'i') },
+        _id: { $ne: existingLease._id } // Exclude current lease from the check
+      });
+
+      if (duplicateLease) {
+        return res.status(400).json({
+          error: `A lease with lessor name "${updateData.lessorName}" already exists for this user. Please use a different lessor name.`
+        });
+      }
     }
 
     const updateQuery: any = { $set: updateData };
