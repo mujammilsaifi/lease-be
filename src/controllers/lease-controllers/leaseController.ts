@@ -20,15 +20,14 @@ export const leaseController: RequestHandler = async (req, res) => {
           $regexMatch: {
             input: { $trim: { input: "$lessorName" } },
             regex: `^${lease.lessorName.trim()}$`,
-            options: "i"
-          }
-        }
+            options: "i",
+          },
+        },
       });
-      
 
       if (existingLease) {
         return res.status(400).json({
-          error: `Lease with lessor name "${lease.lessorName}" already exists for this user.`
+          error: `Lease with lessor name "${lease.lessorName}" already exists for this user.`,
         });
       }
     }
@@ -149,16 +148,21 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     }
 
     // Check if lessorName is being updated and if it would cause a duplicate
-    if (updateData.lessorName && updateData.lessorName !== existingLease.lessorName) {
+    if (
+      updateData.lessorName &&
+      updateData.lessorName !== existingLease.lessorName
+    ) {
       const duplicateLease = await leaseModel.findOne({
         userId: existingLease.userId,
-        lessorName: { $regex: new RegExp(`^${updateData.lessorName.trim()}$`, 'i') },
-        _id: { $ne: existingLease._id } // Exclude current lease from the check
+        lessorName: {
+          $regex: new RegExp(`^${updateData.lessorName.trim()}$`, "i"),
+        },
+        _id: { $ne: existingLease._id }, // Exclude current lease from the check
       });
 
       if (duplicateLease) {
         return res.status(400).json({
-          error: `A lease with lessor name "${updateData.lessorName}" already exists for this user. Please use a different lessor name.`
+          error: `A lease with lessor name "${updateData.lessorName}" already exists for this user. Please use a different lessor name.`,
         });
       }
     }
@@ -303,25 +307,30 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
     if (!leaseToDelete)
       return res.status(404).json({ message: "Lease not found" });
 
-    // If this is a versioned lease (not original), find and reactivate the previous version
+    let previousVersionReactivated = false;
+    let previousVersion = null;
+
     if (leaseToDelete.previousVersionId) {
-      const previousVersion = await leaseModel.findById(
+      previousVersion = await leaseModel.findById(
         leaseToDelete.previousVersionId
       );
-      if (previousVersion) {
-        // Update the previous version to be active again
-        previousVersion.status = "active";
-        await previousVersion.save();
-      }
     }
 
-    // Now delete the requested lease
+    // Delete the requested lease FIRST to avoid duplicate index error
     const deletedLease = await leaseModel.findByIdAndDelete(id);
+
+    // If this is a versioned lease (not original), reactivate the previous version
+    if (previousVersion) {
+      // Update the previous version to be active again
+      previousVersion.status = "active";
+      await previousVersion.save();
+      previousVersionReactivated = true;
+    }
 
     return res.status(200).json({
       message: "Lease deleted successfully",
       data: deletedLease,
-      previousVersionReactivated: !!leaseToDelete.previousVersionId,
+      previousVersionReactivated,
     });
   } catch (error) {
     console.error("Delete Lease error:", error);
