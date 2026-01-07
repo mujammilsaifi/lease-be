@@ -66,6 +66,11 @@ interface ILease extends Document {
   cutOffSecurityDeposit?: number;
   cutOffDatePrepaidRent?: number;
   leaseModificationDate?: string;
+  otherLeaseInformations?: {
+    extensionOption?: boolean;
+    purchaseOption?: boolean;
+    terminationOption?: boolean;
+  };
 }
 
 // Mongoose Schema
@@ -253,6 +258,11 @@ const LeaseSchema: Schema = new Schema(
       },
     },
     leaseModificationDate: { type: String, required: false },
+    otherLeaseInformations: {
+      extensionOption: { type: Boolean, default: false },
+      purchaseOption: { type: Boolean, default: false },
+      terminationOption: { type: Boolean, default: false },
+    },
   },
   { timestamps: true }
 );
