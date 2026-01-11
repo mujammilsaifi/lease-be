@@ -169,16 +169,30 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
 
     const updateQuery: any = { $set: updateData };
 
-    // Step 2: If transitioning from closed to active
-    if (existingLease.status === "close" && updateData.status === "active") {
+    // Step 2: If transitioning from termination to active
+    if (
+      existingLease.status === "terminated" &&
+      updateData.status === "active"
+    ) {
       // Remove conflicting keys from $set if they exist
-      delete updateQuery.$set.leaseClosureDate;
+      delete updateQuery.$set.leaseTerminationDate;
       delete updateQuery.$set.remarks;
 
       // Add to $unset to clear them
       updateQuery.$unset = {
-        leaseClosureDate: "",
+        leaseTerminationDate: "",
         remarks: "",
+      };
+    }
+
+    // Step 3: If transitioning from closed to active
+    if (existingLease.status === "closed" && updateData.status === "active") {
+      // Remove conflicting keys from $set if they exist
+      delete updateQuery.$set.leaseClosureDate;
+
+      // Add to $unset to clear only leaseClosureDate (remarks are kept)
+      updateQuery.$unset = {
+        leaseClosureDate: "",
       };
     }
 
@@ -210,7 +224,11 @@ export const getLeaseController: RequestHandler = async (req, res) => {
       if (!leaseMap.has(key)) {
         leaseMap.set(key, { activeLease: null, previousVersions: [] });
       }
-      if (lease.status === "active" || lease.status === "close") {
+      if (
+        lease.status === "active" ||
+        lease.status === "terminated" ||
+        lease.status === "closed"
+      ) {
         leaseMap.get(key).activeLease = lease;
       } else {
         leaseMap.get(key).previousVersions.push(lease);
@@ -230,62 +248,63 @@ export const getLeaseFormovementController: RequestHandler = async (
   const { startDate, endDate, userId } = req.query;
 
   try {
-    // 1. First fetch all leases for the user
     const allLeases = await leaseModel
       .find({ userId })
       .sort({ _id: -1 })
       .lean();
 
-    // 2. Group leases by their originalLeaseId
     const leaseGroups = new Map<string, any[]>();
 
     allLeases.forEach((lease) => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
-      if (!leaseGroups.has(key)) {
-        leaseGroups.set(key, []);
-      }
+      if (!leaseGroups.has(key)) leaseGroups.set(key, []);
       leaseGroups.get(key)!.push(lease);
     });
 
     const result = [];
 
-    // 3. Process each lease group
     for (const [key, group] of leaseGroups.entries()) {
-      // Sort versions within group by versionNumber descending (latest first)
       group.sort((a, b) => b.versionNumber - a.versionNumber);
 
       const latestVersion = group[0];
       const versionOne = group.find((l) => l.versionNumber === 1);
-      const versionOneStartDate = new Date(versionOne?.leaseWorkingPeriod?.[0]);
-      const queryEndDate = new Date(endDate as string);
+
       const queryStartDate = new Date(startDate as string);
+      const queryEndDate = new Date(endDate as string);
 
-      // Skip condition: if queryStartDate <= cutoffDate
+      const versionOneStartDate = new Date(versionOne?.leaseWorkingPeriod?.[0]);
+
+      // 🔴 Cut-off check
       if (versionOne?.cutOffDate) {
-        const versionOneCutOffDate = new Date(versionOne?.cutOffDate);
+        const cutOffDate = new Date(versionOne.cutOffDate);
 
-        if (queryStartDate <= versionOneCutOffDate) {
-          continue; // skip this group
+        if (queryStartDate <= cutOffDate) {
+          continue;
         }
       }
 
-      if (versionOneStartDate < queryEndDate) {
-        let activeLease = group.find(
-          (lease) => lease.status === "active" || lease.status === "close"
-        );
-
-        // If no active lease found, use latest version as active
-        if (!activeLease) activeLease = latestVersion;
-
-        const previousVersions = group.filter(
-          (lease) => lease._id.toString() !== activeLease!._id.toString()
-        );
-
-        result.push({
-          activeLease,
-          previousVersions,
-        });
+      // 🔴 Start-date check
+      if (!(versionOneStartDate < queryEndDate)) {
+        continue;
       }
+
+      let activeLease = group.find(
+        (lease) =>
+          lease.status === "active" ||
+          lease.status === "terminated" ||
+          lease.status === "closed"
+      );
+
+      if (!activeLease) activeLease = latestVersion;
+
+      const previousVersions = group.filter(
+        (lease) => lease._id.toString() !== activeLease!._id.toString()
+      );
+
+      result.push({
+        activeLease,
+        previousVersions,
+      });
     }
 
     res.status(200).json({ leases: result });

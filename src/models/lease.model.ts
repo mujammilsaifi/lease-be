@@ -11,8 +11,9 @@ interface ILease extends Document {
   lessorName: string;
   natureOfLease: string;
   leaseClosureDate?: string;
+  leaseTerminationDate?: string;
   remarks?: string;
-  status: "active" | "close" | "modified";
+  status: "active" | "terminated" | "closed" | "modified";
   period: string;
   leasePeriod: string[];
   lockingPeriod: string[];
@@ -95,10 +96,11 @@ const LeaseSchema: Schema = new Schema(
     lessorName: { type: String, required: true },
     natureOfLease: { type: String, required: true },
     leaseClosureDate: { type: String, required: false },
+    leaseTerminationDate: { type: String, required: false },
     remarks: { type: String, required: false },
     status: {
       type: String,
-      enum: ["active", "close", "modified"],
+      enum: ["active", "terminated", "closed", "modified"],
       default: "active",
       required: false,
     },
@@ -271,7 +273,7 @@ LeaseSchema.index(
   {
     unique: true,
     partialFilterExpression: {
-      status: { $in: ["active", "close"] },
+      status: { $in: ["active", "terminated"] },
     },
   }
 );
