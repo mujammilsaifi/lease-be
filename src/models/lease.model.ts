@@ -11,7 +11,6 @@ interface ILease extends Document {
   lessorName: string;
   natureOfLease: string;
   leaseClosureDate?: string;
-  securityDepositClosureAmount?: number;
   dateOfSDClosure?: string;
   leaseTerminationDate?: string;
   remarks?: string;
@@ -98,7 +97,6 @@ const LeaseSchema: Schema = new Schema(
     lessorName: { type: String, required: true },
     natureOfLease: { type: String, required: true },
     leaseClosureDate: { type: String, required: false },
-    securityDepositClosureAmount: { type: Number, required: false },
     dateOfSDClosure: { type: String, required: false },
     leaseTerminationDate: { type: String, required: false },
     remarks: { type: String, required: false },
