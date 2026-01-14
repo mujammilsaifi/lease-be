@@ -99,7 +99,7 @@ const LeaseSchema: Schema = new Schema(
     natureOfLease: { type: String, required: true },
     leaseClosureDate: { type: String, required: false },
     securityDepositClosureAmount: { type: Number, required: false },
-    dateOfSDClosure: { type: String, required: true },
+    dateOfSDClosure: { type: String, required: false },
     leaseTerminationDate: { type: String, required: false },
     remarks: { type: String, required: false },
     status: {
