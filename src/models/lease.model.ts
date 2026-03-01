@@ -73,6 +73,10 @@ interface ILease extends Document {
     purchaseOption?: boolean;
     terminationOption?: boolean;
   };
+  randomPayments?: {
+    date: string;
+    amount: number;
+  }[];
 }
 
 // Mongoose Schema
@@ -267,8 +271,14 @@ const LeaseSchema: Schema = new Schema(
       purchaseOption: { type: Boolean, default: false },
       terminationOption: { type: Boolean, default: false },
     },
+    randomPayments: [
+      {
+        date: { type: String, required: true },
+        amount: { type: Number, required: true },
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 LeaseSchema.index(
   { lessorName: 1 },
@@ -277,7 +287,7 @@ LeaseSchema.index(
     partialFilterExpression: {
       status: { $in: ["active", "terminated"] },
     },
-  }
+  },
 );
 
 export default mongoose.model<ILease>("Lease", LeaseSchema);
