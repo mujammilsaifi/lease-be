@@ -25,7 +25,7 @@ interface ILease extends Document {
   frequencyForInterestCalculation?: "monthly" | "daily";
   transitionType?: "prospective" | "retrospective";
   transitionDiscountAdjustment?: "no" | "yes";
-  rentPaymentDate: number;
+  rentPaymentDate: number | string;
   securityDeposit?: number;
   leaseEqualizationPertaining?: number;
   otherAdjustmentInRightOfUse?: number;
@@ -142,7 +142,7 @@ const LeaseSchema: Schema = new Schema(
       required: false,
     },
     rentPaymentDate: {
-      type: Number,
+      type: Schema.Types.Mixed,
       required: true,
     },
     securityDeposit: { type: Number, required: false },
