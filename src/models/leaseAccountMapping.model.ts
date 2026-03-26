@@ -17,10 +17,17 @@ interface IDisclosureSetting {
   entry_type: string;
 }
 
+interface IOIMapping {
+  category: string;
+  asset_type: string;
+  oi_code: string;
+}
+
 interface ILeaseAccountMapping extends Document {
   userId: string;
   mappings: IMapping[];
   disclosureSettings: IDisclosureSetting[];
+  oi_mappings: IOIMapping[];
 }
 
 const leaseAccountMappingSchema = new Schema<ILeaseAccountMapping>(
@@ -43,6 +50,13 @@ const leaseAccountMappingSchema = new Schema<ILeaseAccountMapping>(
         adjustment_type: { type: String, default: "" },
         tag: { type: String, default: "" },
         entry_type: { type: String, default: "" },
+      },
+    ],
+    oi_mappings: [
+      {
+        category: { type: String, required: true },
+        asset_type: { type: String, required: true },
+        oi_code: { type: String, default: "" },
       },
     ],
   },

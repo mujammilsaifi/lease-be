@@ -3,7 +3,7 @@ import LeaseAccountMapping from "../../models/leaseAccountMapping.model";
 
 export const saveMapping = async (req: Request, res: Response) => {
   try {
-    const { userId, mappings, disclosureSettings } = req.body;
+    const { userId, mappings, disclosureSettings, oiMappings } = req.body;
 
     if (!userId) {
       return res.status(400).json({ success: false, message: "userId is required" });
@@ -11,7 +11,7 @@ export const saveMapping = async (req: Request, res: Response) => {
 
     const result = await LeaseAccountMapping.findOneAndUpdate(
       { userId },
-      { mappings, disclosureSettings },
+      { mappings, disclosureSettings, oi_mappings: oiMappings },
       { upsert: true, new: true }
     );
 
@@ -32,12 +32,13 @@ export const getMapping = async (req: Request, res: Response) => {
     const data = await LeaseAccountMapping.findOne({ userId });
 
     if (!data) {
-      return res.status(200).json({ mappings: [], disclosureSettings: [] });
+      return res.status(200).json({ mappings: [], disclosureSettings: [], oiMappings: [] });
     }
 
     res.status(200).json({ 
       mappings: data.mappings || [], 
-      disclosureSettings: data.disclosureSettings || [] 
+      disclosureSettings: data.disclosureSettings || [],
+      oiMappings: data.oi_mappings || [] 
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
