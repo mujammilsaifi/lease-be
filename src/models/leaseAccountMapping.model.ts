@@ -7,6 +7,7 @@ interface IMapping {
   coc_name: string;
   gl_code: string;
   gl_name: string;
+  is_active?: boolean;
 }
 
 interface IDisclosureSetting {
@@ -19,6 +20,7 @@ interface IDisclosureSetting {
 
 interface IOIMapping {
   category: string;
+  particular: string;
   asset_type: string;
   oi_code: string;
 }
@@ -41,6 +43,7 @@ const leaseAccountMappingSchema = new Schema<ILeaseAccountMapping>(
         coc_name: { type: String, default: "" },
         gl_code: { type: String, default: "" },
         gl_name: { type: String, default: "" },
+        is_active: { type: Boolean, default: false },
       },
     ],
     disclosureSettings: [
@@ -55,6 +58,7 @@ const leaseAccountMappingSchema = new Schema<ILeaseAccountMapping>(
     oi_mappings: [
       {
         category: { type: String, required: true },
+        particular: { type: String, required: true },
         asset_type: { type: String, required: true },
         oi_code: { type: String, default: "" },
       },
