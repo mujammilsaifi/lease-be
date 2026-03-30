@@ -2,6 +2,8 @@ import { RequestHandler } from "express";
 import dotenv from "dotenv";
 import leaseModel from "../../models/lease.model";
 import { Period } from "../../models/period.model";
+import AuditLog from "../../models/auditLog.model";
+import { getChanges } from "../../utils/diff";
 import mongoose from "mongoose";
 dotenv.config();
 
@@ -42,9 +44,19 @@ export const leaseController: RequestHandler = async (req, res) => {
 
     // Update originalLeaseId to match _id after creation
     await Promise.all(
-      savedLeases.map((lease) =>
-        leaseModel.findByIdAndUpdate(lease._id, { originalLeaseId: lease._id })
-      )
+      savedLeases.map(async (lease) => {
+        await leaseModel.findByIdAndUpdate(lease._id, { originalLeaseId: lease._id });
+        // Log creation
+        await AuditLog.create({
+          entityType: "Lease",
+          entityId: lease._id,
+          entityName: lease.lessorName,
+          action: "CREATED",
+          performedBy: lease.userId || "System",
+          changes: {},
+          timestamp: new Date()
+        });
+      })
     );
 
     return res.status(201).json({
@@ -105,6 +117,18 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     };
 
     const savedLease = await leaseModel.create([newLeaseData], { session });
+
+    // Calculate changes and log
+    const changes = getChanges(originalData, savedLease[0].toObject());
+    await AuditLog.create([{
+      entityType: "Lease",
+      entityId: savedLease[0].originalLeaseId,
+      entityName: savedLease[0].lessorName,
+      action: "MODIFIED",
+      performedBy: originalData.userId || "System",
+      changes,
+      timestamp: new Date()
+    }], { session });
 
     await session.commitTransaction();
     session.endSession();
@@ -200,6 +224,22 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     const updatedLease = await leaseModel.findByIdAndUpdate(id, updateQuery, {
       new: true,
     });
+
+    if (updatedLease) {
+      // Calculate changes and log
+      const changes = getChanges(existingLease.toObject(), updatedLease.toObject());
+      if (Object.keys(changes).length > 0) {
+        await AuditLog.create({
+          entityType: "Lease",
+          entityId: updatedLease.originalLeaseId || updatedLease._id,
+          entityName: updatedLease.lessorName,
+          action: "UPDATED",
+          performedBy: updatedLease.userId || "System",
+          changes,
+          timestamp: new Date()
+        });
+      }
+    }
 
     return res.status(200).json({
       message: "Lease updated successfully",
@@ -338,6 +378,19 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
     // Delete the requested lease FIRST to avoid duplicate index error
     const deletedLease = await leaseModel.findByIdAndDelete(id);
 
+    // Log deletion
+    if (leaseToDelete) {
+      await AuditLog.create({
+        entityType: "Lease",
+        entityId: leaseToDelete.originalLeaseId || leaseToDelete._id,
+        entityName: leaseToDelete.lessorName,
+        action: "DELETED",
+        performedBy: leaseToDelete.userId || "System",
+        changes: {},
+        timestamp: new Date()
+      });
+    }
+
     // If this is a versioned lease (not original), reactivate the previous version
     if (previousVersion) {
       // Update the previous version to be active again
@@ -438,6 +491,35 @@ export const deletePeriodController: RequestHandler = async (req, res) => {
     res.status(200).json({ message: "Period deleted successfully" });
   } catch (error) {
     console.error("Delete Period Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+/**
+ * Get Lease Logs Controller
+ */
+export const getLeaseLogsController: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Find all logs for the lease (by originalLeaseId)
+    const logs = await AuditLog.find({ entityId: id }).sort({ timestamp: -1 });
+    res.status(200).json({ logs });
+  } catch (error) {
+    console.error("Get Audit Logs error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+/**
+ * Get All Lease Logs Controller
+ */
+export const getAllLeaseLogsController: RequestHandler = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const filter: any = {};
+    if (userId) filter.performedBy = userId;
+    const logs = await AuditLog.find(filter).sort({ timestamp: -1 }).limit(100);
+    res.status(200).json({ logs });
+  } catch (error) {
+    console.error("Get All Audit Logs error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
