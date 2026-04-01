@@ -92,6 +92,7 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     const { id } = req.params;
     const modifyData = req.body;
     const originalData = await leaseModel.findById(id).lean().session(session);
+    
     if (!originalData) {
       await session.abortTransaction();
       session.endSession();
@@ -103,12 +104,17 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
       session.endSession();
       return res.status(400).json({ error: "Invalid lease data provided" });
     }
+
     await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { session });
+    
     const newLeaseData = {
-      userId: originalData.userId,
-      leasePeriod: originalData.leasePeriod,
-      lockingPeriod: originalData.lockingPeriod,
       ...modifyData,
+      userId: originalData.userId,
+      leasePeriod: (modifyData.leasePeriod && modifyData.leasePeriod.length === 2) ? modifyData.leasePeriod : originalData.leasePeriod,
+      lockingPeriod: (modifyData.lockingPeriod && modifyData.lockingPeriod.length === 2) ? modifyData.lockingPeriod : originalData.lockingPeriod,
+      period: (modifyData.period && modifyData.period.trim() !== "") 
+        ? modifyData.period 
+        : (originalData.period && originalData.period.trim() !== "" ? originalData.period : new Date().toISOString().split('T')[0]), // Triple backup to avoid validation error
       _id: undefined,
       originalLeaseId: originalData.originalLeaseId || originalData._id,
       previousVersionId: originalData._id,
@@ -132,12 +138,18 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
 
     await session.commitTransaction();
     session.endSession();
+    
     return res.status(201).json({
       message: "Lease modification added successfully",
       data: savedLease[0],
     });
   } catch (error: any) {
-    console.error("Lease creation error:", error);
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+
+    console.error("Lease modification error:", error);
     if (error.name === "ValidationError") {
       return res.status(400).json({
         error: "Validation Error",
