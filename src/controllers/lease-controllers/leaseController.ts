@@ -124,20 +124,26 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
 
     const savedLease = await leaseModel.create([newLeaseData], { session });
 
-    // Calculate changes and log
-    const changes = getChanges(originalData, savedLease[0].toObject());
-    await AuditLog.create([{
-      entityType: "Lease",
-      entityId: savedLease[0].originalLeaseId,
-      entityName: savedLease[0].lessorName,
-      action: "MODIFIED",
-      performedBy: originalData.userId || "System",
-      changes,
-      timestamp: new Date()
-    }], { session });
-
     await session.commitTransaction();
     session.endSession();
+
+    // Calculate changes and log (after commit so audit failure never blocks the save)
+    try {
+      const changes = getChanges(originalData, savedLease[0].toObject());
+      if (Object.keys(changes).length > 0) {
+        await AuditLog.create({
+          entityType: "Lease",
+          entityId: savedLease[0].originalLeaseId,
+          entityName: savedLease[0].lessorName,
+          action: "MODIFIED",
+          performedBy: originalData.userId || "System",
+          changes,
+          timestamp: new Date()
+        });
+      }
+    } catch (auditErr) {
+      console.error("Audit log error (non-blocking):", auditErr);
+    }
     
     return res.status(201).json({
       message: "Lease modification added successfully",
@@ -238,18 +244,22 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     });
 
     if (updatedLease) {
-      // Calculate changes and log
-      const changes = getChanges(existingLease.toObject(), updatedLease.toObject());
-      if (Object.keys(changes).length > 0) {
-        await AuditLog.create({
-          entityType: "Lease",
-          entityId: updatedLease.originalLeaseId || updatedLease._id,
-          entityName: updatedLease.lessorName,
-          action: "UPDATED",
-          performedBy: updatedLease.userId || "System",
-          changes,
-          timestamp: new Date()
-        });
+      // Calculate changes and log (non-blocking — audit failure must not affect the response)
+      try {
+        const changes = getChanges(existingLease.toObject(), updatedLease.toObject());
+        if (Object.keys(changes).length > 0) {
+          await AuditLog.create({
+            entityType: "Lease",
+            entityId: updatedLease.originalLeaseId || updatedLease._id,
+            entityName: updatedLease.lessorName,
+            action: "UPDATED",
+            performedBy: updatedLease.userId || "System",
+            changes,
+            timestamp: new Date()
+          });
+        }
+      } catch (auditErr) {
+        console.error("Audit log error (non-blocking):", auditErr);
       }
     }
 
