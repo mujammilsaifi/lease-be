@@ -17,12 +17,16 @@ export const authenticateToken: RequestHandler = (req, res, next) => {
     return res.status(401).json({ error: "Token not provided!" });
   }
 
-  const isTokenValid = getUser(token);
+  getUser(token)
+    .then((isTokenValid) => {
+      if (!isTokenValid) {
+        return res.status(401).json({ error: "Invalid token, not authenticated!" });
+      }
 
-  if (!isTokenValid) {
-    return res.status(401).json({ error: "Invalid token, not authenticated!" });
-  }
-
-  (req as any).token = token; // Store the token in the request object for later use if needed
-  next(); // Proceed to the next middleware or controller function
+      (req as any).token = token; // Store the token in the request object for later use if needed
+      return next(); // Proceed to the next middleware or controller function
+    })
+    .catch(() => {
+      return res.status(401).json({ error: "Invalid token, not authenticated!" });
+    });
 };

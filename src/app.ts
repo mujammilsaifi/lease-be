@@ -1,12 +1,12 @@
 // server.ts
-import express, { Request, Response, NextFunction } from 'express';
-import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import morgan from 'morgan';
-import cors from 'cors';
-import helmet from 'helmet';
-import hpp from 'hpp';
-import cookieParser from 'cookie-parser';
+import express, { Request, Response, NextFunction } from "express";
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import morgan from "morgan";
+import cors from "cors";
+import helmet from "helmet";
+import hpp from "hpp";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -17,9 +17,8 @@ const MONGO_URI = process.env.MONGODB_URL as string;
 // ---------------------------
 // Routes
 // ---------------------------
-import userSignUpRoutes from './routes/user/userRoutes';
-import leaseRoutes from './routes/lease/leaseRoutes';
-import sendMailRoute from './routes/mail-route/mail.route';
+import leaseRoutes from "./routes/lease/leaseRoutes";
+import sendMailRoute from "./routes/mail-route/mail.route";
 
 // ---------------------------
 // Database Connection
@@ -29,7 +28,7 @@ const connectDB = async () => {
     await mongoose.connect(MONGO_URI);
     console.log(` MongoDB Connected: ${mongoose.connection.host}`);
   } catch (error: any) {
-    console.error('MongoDB Connection Failed:', error.message);
+    console.error("MongoDB Connection Failed:", error.message);
     process.exit(1);
   }
 };
@@ -37,42 +36,41 @@ const connectDB = async () => {
 // ---------------------------
 // Global Middleware
 // ---------------------------
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({ origin: "*", credentials: true }));
 app.use(helmet());
 app.use(hpp());
 
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
 } else {
-  app.use(morgan('combined'));
+  app.use(morgan("combined"));
 }
 
 // ---------------------------
 // Routes
 // ---------------------------
-app.get('/', (req: Request, res: Response) => {
-  res.send('🚀 Server is running...');
+app.get("/", (req: Request, res: Response) => {
+  res.send("🚀 Server is running...");
 });
 
-app.use('/api/user', userSignUpRoutes);
-app.use('/api/v1', leaseRoutes);
-app.use('/api/mail', sendMailRoute);
+app.use("/api/v1", leaseRoutes);
+app.use("/api/mail", sendMailRoute);
 
 // Optional: Health check route
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
-    status: 'ok',
+    status: "ok",
     dbConnected: mongoose.connection.readyState === 1,
   });
 });
 
 // Optional: Global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('💥 Global Error:', err.stack);
-  res.status(500).json({ error: 'Internal Server Error' });
+  console.error("💥 Global Error:", err.stack);
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 // ---------------------------

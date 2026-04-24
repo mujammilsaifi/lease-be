@@ -1,43 +1,95 @@
 import { RequestHandler } from "express";
 import dotenv from "dotenv";
 import leaseModel from "../../models/lease.model";
-import { Period } from "../../models/period.model";
 import AuditLog from "../../models/auditLog.model";
 import { getChanges } from "../../utils/diff";
 import mongoose from "mongoose";
+import { getUser } from "../../services/auth";
 dotenv.config();
+
+const ADMIN_ROLES = new Set(["MASTER", "ADMIN", "SUB_ADMIN"]);
+
+/**
+ * Helper to build the lease query based on user role and fallbacks
+ */
+const buildLeaseQuery = (requestUser: any, queryParams: any) => {
+  const { userId, adminId, locationId } = queryParams;
+  const query: any = {};
+  const isAdmin = ADMIN_ROLES.has(requestUser?.role || "");
+
+  if (isAdmin && requestUser?._id) {
+    query.$or = [{ adminId: requestUser._id }, { userId: requestUser._id }];
+  } else if (requestUser?._id) {
+    query.userId = requestUser._id;
+  } else if (typeof adminId === "string" && adminId.trim() !== "") {
+    query.$or = [{ adminId: adminId }, { userId: adminId }];
+  } else if (typeof userId === "string" && userId.trim() !== "") {
+    query.userId = userId;
+  } else {
+    return null;
+  }
+
+  if (typeof locationId === "string" && locationId.trim() !== "") {
+    query.locationId = locationId;
+  }
+
+  return query;
+};
+
+/**
+ * Helper to get the correct adminId for a request user
+ */
+const getAdminId = (requestUser: any) => {
+  return ADMIN_ROLES.has(requestUser?.role || "")
+    ? requestUser?._id
+    : requestUser?.adminId || null;
+};
 
 export const leaseController: RequestHandler = async (req, res) => {
   try {
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    const requestUser = token ? await getUser(token) : null;
+
+    if (!requestUser?._id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const leaseData = req.body;
     if (!Array.isArray(leaseData) || leaseData.length === 0) {
       return res.status(400).json({ error: "Invalid lease data provided" });
     }
 
-    // Check for existing leases with same user and lessor name
-    for (const lease of leaseData) {
-      const existingLease = await leaseModel.findOne({
-        userId: lease.userId,
-        $expr: {
-          $regexMatch: {
-            input: { $trim: { input: "$lessorName" } },
-            regex: `^${lease.lessorName.trim()}$`,
-            options: "i",
-          },
-        },
-      });
+    const adminId = getAdminId(requestUser);
 
-      if (existingLease) {
-        return res.status(400).json({
-          error: `Lease with lessor name "${lease.lessorName}" already exists for this user.`,
-        });
-      }
+    // Parallel check for existing leases with same user and lessor name
+    const existingLeaseChecks = await Promise.all(
+      leaseData.map((lease) =>
+        leaseModel.findOne({
+          userId: requestUser._id,
+          $expr: {
+            $regexMatch: {
+              input: { $trim: { input: "$lessorName" } },
+              regex: `^${lease.lessorName.trim()}$`,
+              options: "i",
+            },
+          },
+        }),
+      ),
+    );
+
+    const foundDuplicate = existingLeaseChecks.find((l) => l !== null);
+    if (foundDuplicate) {
+      return res.status(400).json({
+        error: `Lease with lessor name "${foundDuplicate.lessorName}" already exists for this user.`,
+      });
     }
 
-    // Add versioning fields
+    // Add versioning fields and inject userId/adminId from JWT (never trust body)
     const leasesWithVersioning = leaseData.map((lease) => ({
       ...lease,
-      versionNumber: 1, // Set initial version number
+      userId: requestUser._id,
+      adminId,
+      versionNumber: 1,
     }));
 
     const savedLeases = await leaseModel.insertMany(leasesWithVersioning);
@@ -45,18 +97,20 @@ export const leaseController: RequestHandler = async (req, res) => {
     // Update originalLeaseId to match _id after creation
     await Promise.all(
       savedLeases.map(async (lease) => {
-        await leaseModel.findByIdAndUpdate(lease._id, { originalLeaseId: lease._id });
+        await leaseModel.findByIdAndUpdate(lease._id, {
+          originalLeaseId: lease._id,
+        });
         // Log creation
         await AuditLog.create({
           entityType: "Lease",
           entityId: lease._id,
           entityName: lease.lessorName,
           action: "CREATED",
-          performedBy: lease.userId || "System",
+          performedBy: requestUser._id,
           changes: {},
-          timestamp: new Date()
+          timestamp: new Date(),
         });
-      })
+      }),
     );
 
     return res.status(201).json({
@@ -92,7 +146,7 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     const { id } = req.params;
     const modifyData = req.body;
     const originalData = await leaseModel.findById(id).lean().session(session);
-    
+
     if (!originalData) {
       await session.abortTransaction();
       session.endSession();
@@ -106,15 +160,24 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     }
 
     await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { session });
-    
+
     const newLeaseData = {
       ...modifyData,
       userId: originalData.userId,
-      leasePeriod: (modifyData.leasePeriod && modifyData.leasePeriod.length === 2) ? modifyData.leasePeriod : originalData.leasePeriod,
-      lockingPeriod: (modifyData.lockingPeriod && modifyData.lockingPeriod.length === 2) ? modifyData.lockingPeriod : originalData.lockingPeriod,
-      period: (modifyData.period && modifyData.period.trim() !== "") 
-        ? modifyData.period 
-        : (originalData.period && originalData.period.trim() !== "" ? originalData.period : new Date().toISOString().split('T')[0]), // Triple backup to avoid validation error
+      leasePeriod:
+        modifyData.leasePeriod && modifyData.leasePeriod.length === 2
+          ? modifyData.leasePeriod
+          : originalData.leasePeriod,
+      lockingPeriod:
+        modifyData.lockingPeriod && modifyData.lockingPeriod.length === 2
+          ? modifyData.lockingPeriod
+          : originalData.lockingPeriod,
+      period:
+        modifyData.period && modifyData.period.trim() !== ""
+          ? modifyData.period
+          : originalData.period && originalData.period.trim() !== ""
+            ? originalData.period
+            : new Date().toISOString().split("T")[0], // Triple backup to avoid validation error
       _id: undefined,
       originalLeaseId: originalData.originalLeaseId || originalData._id,
       previousVersionId: originalData._id,
@@ -138,13 +201,13 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
           action: "MODIFIED",
           performedBy: originalData.userId || "System",
           changes,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       }
     } catch (auditErr) {
       console.error("Audit log error (non-blocking):", auditErr);
     }
-    
+
     return res.status(201).json({
       message: "Lease modification added successfully",
       data: savedLease[0],
@@ -246,7 +309,10 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     if (updatedLease) {
       // Calculate changes and log (non-blocking — audit failure must not affect the response)
       try {
-        const changes = getChanges(existingLease.toObject(), updatedLease.toObject());
+        const changes = getChanges(
+          existingLease.toObject(),
+          updatedLease.toObject(),
+        );
         if (Object.keys(changes).length > 0) {
           await AuditLog.create({
             entityType: "Lease",
@@ -255,7 +321,7 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
             action: "UPDATED",
             performedBy: updatedLease.userId || "System",
             changes,
-            timestamp: new Date()
+            timestamp: new Date(),
           });
         }
       } catch (auditErr) {
@@ -278,8 +344,16 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
  */
 export const getLeaseController: RequestHandler = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const leases = await leaseModel.find({ userId }).sort({ _id: -1 }).lean();
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    const requestUser = token ? await getUser(token) : null;
+
+    const query = buildLeaseQuery(requestUser, req.query);
+
+    if (!query) {
+      return res.status(400).json({ message: "userId or adminId is required" });
+    }
+
+    const leases = await leaseModel.find(query).sort({ _id: -1 }).lean();
     const leaseMap = new Map();
     leases.forEach((lease) => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
@@ -305,15 +379,20 @@ export const getLeaseController: RequestHandler = async (req, res) => {
 };
 export const getLeaseFormovementController: RequestHandler = async (
   req,
-  res
+  res,
 ) => {
-  const { startDate, endDate, userId } = req.query;
+  const { startDate, endDate } = req.query;
 
   try {
-    const allLeases = await leaseModel
-      .find({ userId })
-      .sort({ _id: -1 })
-      .lean();
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    const requestUser = token ? await getUser(token) : null;
+
+    const query = buildLeaseQuery(requestUser, req.query);
+
+    if (!query) {
+      return res.status(400).json({ message: "userId or adminId is required" });
+    }
+    const allLeases = await leaseModel.find(query).sort({ _id: -1 }).lean();
 
     const leaseGroups = new Map<string, any[]>();
 
@@ -354,13 +433,13 @@ export const getLeaseFormovementController: RequestHandler = async (
         (lease) =>
           lease.status === "active" ||
           lease.status === "terminated" ||
-          lease.status === "closed"
+          lease.status === "closed",
       );
 
       if (!activeLease) activeLease = latestVersion;
 
       const previousVersions = group.filter(
-        (lease) => lease._id.toString() !== activeLease!._id.toString()
+        (lease) => lease._id.toString() !== activeLease!._id.toString(),
       );
 
       result.push({
@@ -393,7 +472,7 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
 
     if (leaseToDelete.previousVersionId) {
       previousVersion = await leaseModel.findById(
-        leaseToDelete.previousVersionId
+        leaseToDelete.previousVersionId,
       );
     }
 
@@ -409,7 +488,7 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
         action: "DELETED",
         performedBy: leaseToDelete.userId || "System",
         changes: {},
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
@@ -432,90 +511,6 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
   }
 };
 
-/**
- * Create Period Controller
- */
-export const periodController: RequestHandler = async (req, res) => {
-  try {
-    const { startDate, endDate, status } = req.body;
-    if (!startDate || !endDate) {
-      return res
-        .status(400)
-        .json({ message: "Start date and end date are required" });
-    }
-
-    const newPeriod = new Period({ startDate, endDate, status });
-    await newPeriod.save();
-
-    res
-      .status(201)
-      .json({ message: "Period created successfully", data: newPeriod });
-  } catch (error) {
-    console.error("Create Period Error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-/**
- * Update Period Controller
- */
-export const updatePeriodController: RequestHandler = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { startDate, endDate, status } = req.body;
-
-    const updatedPeriod = await Period.findByIdAndUpdate(
-      id,
-      { startDate, endDate, status },
-      { new: true }
-    );
-
-    if (!updatedPeriod) {
-      return res.status(404).json({ message: "Period not found" });
-    }
-
-    res
-      .status(200)
-      .json({ message: "Period updated successfully", data: updatedPeriod });
-  } catch (error) {
-    console.error("Update Period Error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-/**
- * Get All Periods Controller
- */
-export const getPeriodController: RequestHandler = async (req, res) => {
-  try {
-    const periods = await Period.find().sort({ createdAt: -1 });
-    res
-      .status(200)
-      .json({ message: "Periods fetched successfully", data: periods });
-  } catch (error) {
-    console.error("Get Periods Error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-/**
- * Delete Period Controller
- */
-export const deletePeriodController: RequestHandler = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deletedPeriod = await Period.findByIdAndDelete(id);
-
-    if (!deletedPeriod) {
-      return res.status(404).json({ message: "Period not found" });
-    }
-
-    res.status(200).json({ message: "Period deleted successfully" });
-  } catch (error) {
-    console.error("Delete Period Error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 /**
  * Get Lease Logs Controller
  */

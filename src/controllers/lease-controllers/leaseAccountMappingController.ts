@@ -1,9 +1,15 @@
 import { Request, Response } from "express";
 import LeaseAccountMapping from "../../models/leaseAccountMapping.model";
+import { getUser } from "../../services/auth";
 
 export const saveMapping = async (req: Request, res: Response) => {
   try {
-    const { userId, mappings, disclosureSettings, oiMappings } = req.body;
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    const requestUser = token ? await getUser(token) : null;
+    
+    const { userId: bodyUserId, mappings, disclosureSettings, oiMappings } = req.body;
+    
+    const userId = bodyUserId || requestUser?._id;
 
     if (!userId) {
       return res.status(400).json({ success: false, message: "userId is required" });
@@ -23,7 +29,12 @@ export const saveMapping = async (req: Request, res: Response) => {
 
 export const getMapping = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    const requestUser = token ? await getUser(token) : null;
+    
+    const { userId: queryUserId } = req.query;
+    
+    const userId = queryUserId || requestUser?._id;
 
     if (!userId) {
       return res.status(400).json({ success: false, message: "userId is required" });
@@ -44,3 +55,4 @@ export const getMapping = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

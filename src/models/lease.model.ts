@@ -4,7 +4,9 @@ import mongoose, { Schema, Document } from "mongoose";
 interface ILease extends Document {
   selectedOptions: string[];
   userId: mongoose.Types.ObjectId;
-  originalLeaseId?: string;
+  adminId?: mongoose.Types.ObjectId;
+  locationId?: mongoose.Types.ObjectId;
+  originalLeaseId?: mongoose.Types.ObjectId;
   previousVersionId?: mongoose.Types.ObjectId;
   versionNumber: number;
   scope?: number;
@@ -85,7 +87,9 @@ const LeaseSchema: Schema = new Schema(
     selectedOptions: {
       type: [String],
     },
-    userId: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, required: true },
+    adminId: { type: Schema.Types.ObjectId, required: false }, // 🔥 MAIN FIX
+    locationId: { type: Schema.Types.ObjectId, required: false }, // for location filter
     originalLeaseId: {
       type: Schema.Types.ObjectId,
       ref: "Lease",
