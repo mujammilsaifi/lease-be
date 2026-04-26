@@ -17,8 +17,15 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
   const query: any = {};
   const isAdmin = ADMIN_ROLES.has(requestUser?.role || "");
 
+  const isValidId = (id: any) =>
+    id &&
+    typeof id === "string" &&
+    id.trim() !== "" &&
+    id !== "undefined" &&
+    id !== "null";
+
   if (isAdmin && requestUser?._id) {
-    if (userId && typeof userId === "string" && userId.trim() !== "") {
+    if (isValidId(userId)) {
       query.userId = userId;
       query.adminId = requestUser._id;
     } else {
@@ -26,15 +33,15 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
     }
   } else if (requestUser?._id) {
     query.userId = requestUser._id;
-  } else if (typeof adminId === "string" && adminId.trim() !== "") {
+  } else if (isValidId(adminId)) {
     query.$or = [{ adminId: adminId }, { userId: adminId }];
-  } else if (typeof userId === "string" && userId.trim() !== "") {
+  } else if (isValidId(userId)) {
     query.userId = userId;
   } else {
     return null;
   }
 
-  if (typeof locationId === "string" && locationId.trim() !== "") {
+  if (isValidId(locationId)) {
     query.locationId = locationId;
   }
 
