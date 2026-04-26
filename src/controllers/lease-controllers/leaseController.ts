@@ -102,6 +102,7 @@ export const leaseController: RequestHandler = async (req, res) => {
       ...lease,
       userId: requestUser._id,
       adminId,
+      locationId: requestUser.locationId || lease.locationId || "",
       userName: requestUser.fullName || requestUser.name || lease.userName,
       location: requestUser.location || requestUser.Location || lease.location,
       leaseGroup:
@@ -181,6 +182,8 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     const newLeaseData = {
       ...modifyData,
       userId: originalData.userId,
+      adminId: originalData.adminId || null,
+      locationId: modifyData.locationId || originalData.locationId || "",
       leasePeriod:
         modifyData.leasePeriod && modifyData.leasePeriod.length === 2
           ? modifyData.leasePeriod
@@ -262,6 +265,8 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    const requestUser = token ? await getUser(token) : null;
 
     // Step 1: Find existing lease
     const existingLease = await leaseModel.findById(id);
@@ -289,7 +294,17 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
       }
     }
 
+    const adminId = getAdminId(requestUser);
     const updateQuery: any = { $set: updateData };
+
+    // Fill missing IDs from context if they aren't in the lease yet
+    if (!existingLease.adminId && adminId) {
+      updateQuery.$set.adminId = adminId;
+    }
+    if (!existingLease.locationId) {
+      const locId = requestUser?.locationId || updateData.locationId;
+      if (locId) updateQuery.$set.locationId = locId;
+    }
 
     // Step 2: If transitioning from termination to active
     if (
