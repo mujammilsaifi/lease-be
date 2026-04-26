@@ -108,8 +108,8 @@ export const leaseController: RequestHandler = async (req, res) => {
     const leasesWithVersioning = leaseData.map((lease) => ({
       ...lease,
       userId: requestUser._id,
-      adminId,
-      locationId: requestUser.locationId || lease.locationId || "",
+      adminId: adminId || undefined,
+      locationId: requestUser.locationId || lease.locationId || undefined,
       userName: requestUser.fullName || requestUser.name || lease.userName,
       location: requestUser.location || requestUser.Location || lease.location,
       leaseGroup:
@@ -189,8 +189,8 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     const newLeaseData = {
       ...modifyData,
       userId: originalData.userId,
-      adminId: originalData.adminId || null,
-      locationId: modifyData.locationId || originalData.locationId || "",
+      adminId: originalData.adminId || undefined,
+      locationId: modifyData.locationId || originalData.locationId || undefined,
       leasePeriod:
         modifyData.leasePeriod && modifyData.leasePeriod.length === 2
           ? modifyData.leasePeriod
