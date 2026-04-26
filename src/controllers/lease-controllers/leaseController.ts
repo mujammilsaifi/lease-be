@@ -13,12 +13,17 @@ const ADMIN_ROLES = new Set(["MASTER", "ADMIN", "SUB_ADMIN"]);
  * Helper to build the lease query based on user role and fallbacks
  */
 const buildLeaseQuery = (requestUser: any, queryParams: any) => {
-  const { userId, adminId, locationId } = queryParams;
+  const { userId, adminId, locationId, location, leaseGroup } = queryParams;
   const query: any = {};
   const isAdmin = ADMIN_ROLES.has(requestUser?.role || "");
 
   if (isAdmin && requestUser?._id) {
-    query.$or = [{ adminId: requestUser._id }, { userId: requestUser._id }];
+    if (userId && typeof userId === "string" && userId.trim() !== "") {
+      query.userId = userId;
+      query.adminId = requestUser._id;
+    } else {
+      query.$or = [{ adminId: requestUser._id }, { userId: requestUser._id }];
+    }
   } else if (requestUser?._id) {
     query.userId = requestUser._id;
   } else if (typeof adminId === "string" && adminId.trim() !== "") {
@@ -31,6 +36,14 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
 
   if (typeof locationId === "string" && locationId.trim() !== "") {
     query.locationId = locationId;
+  }
+
+  if (typeof location === "string" && location.trim() !== "") {
+    query.location = location;
+  }
+
+  if (typeof leaseGroup === "string" && leaseGroup.trim() !== "") {
+    query.leaseGroup = leaseGroup;
   }
 
   return query;
@@ -89,6 +102,10 @@ export const leaseController: RequestHandler = async (req, res) => {
       ...lease,
       userId: requestUser._id,
       adminId,
+      userName: requestUser.fullName || requestUser.name || lease.userName,
+      location: requestUser.location || requestUser.Location || lease.location,
+      leaseGroup:
+        requestUser.leaseGroup || requestUser.group || lease.leaseGroup,
       versionNumber: 1,
     }));
 

@@ -16,6 +16,9 @@ interface ILease extends Document {
   dateOfSDClosure?: string;
   leaseTerminationDate?: string;
   remarks?: string;
+  userName?: string;
+  location?: string;
+  leaseGroup?: string;
   status: "active" | "terminated" | "closed" | "modified";
   period: string;
   leasePeriod: string[];
@@ -108,6 +111,9 @@ const LeaseSchema: Schema = new Schema(
     dateOfSDClosure: { type: String, required: false },
     leaseTerminationDate: { type: String, required: false },
     remarks: { type: String, required: false },
+    userName: { type: String, required: false },
+    location: { type: String, required: false },
+    leaseGroup: { type: String, required: false },
     status: {
       type: String,
       enum: ["active", "terminated", "closed", "modified"],
