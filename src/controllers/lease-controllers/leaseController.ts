@@ -13,7 +13,7 @@ const ADMIN_ROLES = new Set(["MASTER", "ADMIN", "SUB_ADMIN"]);
  * Helper to build the lease query based on user role and fallbacks
  */
 const buildLeaseQuery = (requestUser: any, queryParams: any) => {
-  const { userId, adminId, locationId, location, leaseGroup } = queryParams;
+  const { userId, adminId, leaseGroup } = queryParams;
   const query: any = {};
   const isAdmin = ADMIN_ROLES.has(requestUser?.role || "");
 
@@ -41,13 +41,6 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
     return null;
   }
 
-  if (isValidId(locationId)) {
-    query.locationId = locationId;
-  }
-
-  if (typeof location === "string" && location.trim() !== "") {
-    query.location = location;
-  }
 
   if (typeof leaseGroup === "string" && leaseGroup.trim() !== "") {
     query.leaseGroup = leaseGroup;
@@ -63,6 +56,55 @@ const getAdminId = (requestUser: any) => {
   return ADMIN_ROLES.has(requestUser?.role || "")
     ? requestUser?._id
     : requestUser?.adminId || null;
+};
+
+/**
+ * Helper to fetch user names from the external Admin API
+ */
+const attachUserNamesToLeases = async (
+  leases: any[],
+  token: string | undefined,
+) => {
+  if (!leases || leases.length === 0) return leases;
+
+  const uniqueUserIds = [
+    ...new Set(leases.map((l) => l.userId?.toString()).filter(Boolean)),
+  ];
+  if (uniqueUserIds.length === 0) return leases;
+
+  try {
+    const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
+
+    const headers: any = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers,
+    });
+
+    if (response.ok) {
+      const data = (await response.json()) as any;
+      if (data && Array.isArray(data.data)) {
+        // Convert the array of users to a map for O(1) lookup
+        const usersMap = data.data.reduce((acc: any, user: any) => {
+          acc[user._id.toString()] = user;
+          return acc;
+        }, {});
+
+        leases.forEach((lease) => {
+          const uId = lease.userId?.toString();
+          const user = usersMap[uId];
+          if (uId && user) {
+            lease.userName = user.fullName;
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching batch user details:", error);
+  }
+  return leases;
 };
 
 export const leaseController: RequestHandler = async (req, res) => {
@@ -393,6 +435,8 @@ export const getLeaseController: RequestHandler = async (req, res) => {
     }
 
     const leases = await leaseModel.find(query).sort({ _id: -1 }).lean();
+    await attachUserNamesToLeases(leases, token); // Attach names from Admin Project
+
     const leaseMap = new Map();
     leases.forEach((lease) => {
       const key = lease.originalLeaseId?.toString() || lease._id.toString();
@@ -432,6 +476,7 @@ export const getLeaseFormovementController: RequestHandler = async (
       return res.status(400).json({ message: "userId or adminId is required" });
     }
     const allLeases = await leaseModel.find(query).sort({ _id: -1 }).lean();
+    await attachUserNamesToLeases(allLeases, token); // Attach names from Admin Project
 
     const leaseGroups = new Map<string, any[]>();
 
