@@ -17,16 +17,33 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
   const query: any = {};
   const isAdmin = ADMIN_ROLES.has(requestUser?.role || "");
 
-  const isValidId = (id: any) =>
-    id &&
-    typeof id === "string" &&
-    id.trim() !== "" &&
-    id !== "undefined" &&
-    id !== "null";
+  const isValidId = (id: any) => {
+    if (!id) return false;
+    if (Array.isArray(id)) return id.length > 0;
+    return (
+      typeof id === "string" &&
+      id.trim() !== "" &&
+      id !== "undefined" &&
+      id !== "null"
+    );
+  };
+
+  const getArrayFromQuery = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === "string") {
+      return val
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v !== "" && v !== "undefined" && v !== "null");
+    }
+    return [val];
+  };
 
   if (isAdmin && requestUser?._id) {
     if (isValidId(userId)) {
-      query.userId = userId;
+      const userIds = getArrayFromQuery(userId);
+      query.userId = userIds.length === 1 ? userIds[0] : { $in: userIds };
       query.adminId = requestUser._id;
     } else {
       query.$or = [{ adminId: requestUser._id }, { userId: requestUser._id }];
@@ -36,7 +53,8 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
   } else if (isValidId(adminId)) {
     query.$or = [{ adminId: adminId }, { userId: adminId }];
   } else if (isValidId(userId)) {
-    query.userId = userId;
+    const userIds = getArrayFromQuery(userId);
+    query.userId = userIds.length === 1 ? userIds[0] : { $in: userIds };
   } else {
     return null;
   }
