@@ -20,6 +20,9 @@ interface ILease extends Document {
   location?: string;
   leaseGroup?: string;
   status: "active" | "terminated" | "closed" | "modified";
+  iuStatus?: "IU Transferred" | "IU Received";
+  dateOfIUTransfer?: string;
+  dateOfIUReceived?: string;
   period: string;
   leasePeriod: string[];
   lockingPeriod: string[];
@@ -118,6 +121,19 @@ const LeaseSchema: Schema = new Schema(
       type: String,
       enum: ["active", "terminated", "closed", "modified"],
       default: "active",
+      required: false,
+    },
+    iuStatus: { type: String, required: false },
+    dateOfIUTransfer: { type: String, required: false },
+    dateOfIUReceived: { type: String, required: false },
+    transferredToUserId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+    transferredFromUserId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: false,
     },
     period: { type: String, required: true },
@@ -296,6 +312,7 @@ LeaseSchema.index(
     unique: true,
     partialFilterExpression: {
       status: { $in: ["active", "terminated"] },
+      iuStatus: { $exists: false }, // Only enforce uniqueness for standard leases
     },
   },
 );

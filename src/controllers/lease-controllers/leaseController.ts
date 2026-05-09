@@ -59,7 +59,6 @@ const buildLeaseQuery = (requestUser: any, queryParams: any) => {
     return null;
   }
 
-
   if (typeof leaseGroup === "string" && leaseGroup.trim() !== "") {
     query.leaseGroup = leaseGroup;
   }
@@ -146,6 +145,7 @@ export const leaseController: RequestHandler = async (req, res) => {
       leaseData.map((lease) =>
         leaseModel.findOne({
           userId: requestUser._id,
+          iuStatus: { $exists: false }, // Only check duplicates for non-transfer leases
           $expr: {
             $regexMatch: {
               input: { $trim: { input: "$lessorName" } },
@@ -348,6 +348,7 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     ) {
       const duplicateLease = await leaseModel.findOne({
         userId: existingLease.userId,
+        iuStatus: { $exists: false }, // Only check duplicates for non-transfer leases
         lessorName: {
           $regex: new RegExp(`^${updateData.lessorName.trim()}$`, "i"),
         },
@@ -640,5 +641,159 @@ export const getAllLeaseLogsController: RequestHandler = async (req, res) => {
   } catch (error) {
     console.error("Get All Audit Logs error:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+/**
+ * Lease Transfer Controller (IU Transfer)
+ */
+export const leaseTransferController: RequestHandler = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params; // Active Lease ID of the sender
+    const {
+      transferDate,
+      receiverUserId,
+      receiverUserName,
+      receiverLocation,
+      receiverLocationId,
+      receiverLeaseGroup,
+    } = req.body;
+
+    const activeLease = await leaseModel.findById(id).session(session);
+    if (!activeLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Active lease not found" });
+    }
+
+    // 1. Identify all versions of this lease from the sender's side
+    const senderVersions = await leaseModel
+      .find({
+        originalLeaseId: activeLease.originalLeaseId,
+      })
+      .sort({ versionNumber: 1 })
+      .session(session);
+
+    // 2. Update Sender's Active Lease (Identification only, functional status remains unchanged)
+    activeLease.iuStatus = "IU Transferred";
+    activeLease.dateOfIUTransfer = transferDate;
+    await activeLease.save({ session });
+
+    // 3. Clone all versions for the receiver
+    const receiverIdMapping = new Map();
+    let newOriginalLeaseId: any = null;
+
+    for (const version of senderVersions) {
+      const versionObj: any = version.toObject();
+      const oldId = versionObj._id.toString();
+
+      delete versionObj._id;
+      delete versionObj.createdAt;
+      delete versionObj.updatedAt;
+
+      // Map to receiver's details
+      versionObj.userId = receiverUserId;
+      versionObj.userName = receiverUserName || "Unknown";
+      versionObj.location = receiverLocation || versionObj.location;
+      versionObj.locationId = receiverLocationId || versionObj.locationId;
+      versionObj.leaseGroup = receiverLeaseGroup || versionObj.leaseGroup;
+
+      // Handle version linking
+      if (versionObj.previousVersionId) {
+        versionObj.previousVersionId = receiverIdMapping.get(
+          versionObj.previousVersionId.toString(),
+        );
+      }
+
+      // If it's the active version being transferred
+      if (oldId === id) {
+        versionObj.iuStatus = "IU Received";
+        versionObj.dateOfIUReceived = transferDate;
+        // Adjust the working period to start from the transfer date for the receiver's calculation
+        versionObj.leaseWorkingPeriod = [
+          transferDate,
+          versionObj.leaseWorkingPeriod[1],
+        ];
+      }
+
+      const clonedVersion = new leaseModel(versionObj);
+      const savedClone = await clonedVersion.save({ session });
+
+      receiverIdMapping.set(oldId, savedClone._id);
+
+      // Set new originalLeaseId based on the first version created for the receiver
+      if (!newOriginalLeaseId) {
+        newOriginalLeaseId = savedClone._id;
+      }
+
+      // Update originalLeaseId for all versions in the new chain
+      await leaseModel.findByIdAndUpdate(
+        savedClone._id,
+        {
+          originalLeaseId: newOriginalLeaseId,
+        },
+        { session },
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Entire lease history transferred successfully",
+    });
+  } catch (error: any) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error("Lease history transfer error:", error);
+    return res
+      .status(500)
+      .json({ error: "Transfer failed", details: error.message });
+  }
+};
+
+/**
+ * Get All Users Controller (Fetches from external Admin API)
+ */
+export const getAllUsersController: RequestHandler = async (req, res) => {
+  try {
+    const adminToken =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc3ODM0NzUwNCwiZXhwIjoxNzc4NDMzOTA0fQ.y79T1X7eep4QJjgwAa9HY10STiF-hjzBZ-DJeNUvDHU";
+    const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch users from Admin API" });
+    }
+
+    const data = (await response.json()) as any;
+    // Map the external user data to a simpler format for the frontend
+    const users = (data.data || []).map((user: any) => ({
+      id: user._id,
+      name: user.fullName || user.name,
+      location: user.Location || user.location,
+      locationId: user.locationId,
+      leaseGroup: user.group || user.leaseGroup,
+    }));
+
+    return res.status(200).json({ users });
+  } catch (error: any) {
+    console.error("Error fetching all users:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
   }
 };

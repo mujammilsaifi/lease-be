@@ -8,6 +8,8 @@ import {
   leaseController,
   leaseModificationController,
   updateLeaseController,
+  leaseTransferController,
+  getAllUsersController,
 } from "../../controllers/lease-controllers/leaseController";
 import {
   saveMapping,
@@ -21,8 +23,10 @@ router.get("/lease", getLeaseController);
 router.get("/lease/movement", getLeaseFormovementController);
 router.post("/lease", leaseController);
 router.put("/lease/:id", updateLeaseController);
+router.get("/users", getAllUsersController);
 router.delete("/lease/:id", deleteLeaseController);
 router.put("/lease-modification/:id", leaseModificationController);
+router.post("/lease-transfer/:id", leaseTransferController);
 router.get("/lease/all/logs", getAllLeaseLogsController);
 router.get("/lease/:id/logs", getLeaseLogsController);
 
