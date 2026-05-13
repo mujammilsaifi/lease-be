@@ -465,7 +465,8 @@ export const getLeaseController: RequestHandler = async (req, res) => {
       if (
         lease.status === "active" ||
         lease.status === "terminated" ||
-        lease.status === "closed"
+        lease.status === "closed" ||
+        lease.status === "transferred"
       ) {
         leaseMap.get(key).activeLease = lease;
       } else {
@@ -536,7 +537,8 @@ export const getLeaseFormovementController: RequestHandler = async (
         (lease) =>
           lease.status === "active" ||
           lease.status === "terminated" ||
-          lease.status === "closed",
+          lease.status === "closed" ||
+          lease.status === "transferred",
       );
 
       if (!activeLease) activeLease = latestVersion;
@@ -652,14 +654,16 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 
   try {
     const { id } = req.params; // Active Lease ID of the sender
-    const {
-      transferDate,
-      receiverUserId,
-      receiverUserName,
-      receiverLocation,
-      receiverLocationId,
-      receiverLeaseGroup,
-    } = req.body;
+    const { newUserId, dateOfIUTransfer, dateOfIUReceived } = req.body;
+    const receiverId = newUserId;
+
+    if (!receiverId || !dateOfIUTransfer || !dateOfIUReceived) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        error: "newUserId, dateOfIUTransfer and dateOfIUReceived are required",
+      });
+    }
 
     const activeLease = await leaseModel.findById(id).session(session);
     if (!activeLease) {
@@ -667,21 +671,34 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
       session.endSession();
       return res.status(404).json({ error: "Active lease not found" });
     }
+    if (activeLease.userId?.toString() === receiverId?.toString()) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(400)
+        .json({ error: "Sender and receiver cannot be the same user" });
+    }
+
+    const senderUserId = activeLease.userId;
+    const rootOriginalLeaseId = activeLease.originalLeaseId || activeLease._id;
 
     // 1. Identify all versions of this lease from the sender's side
     const senderVersions = await leaseModel
       .find({
-        originalLeaseId: activeLease.originalLeaseId,
+        originalLeaseId: rootOriginalLeaseId,
       })
       .sort({ versionNumber: 1 })
       .session(session);
 
-    // 2. Update Sender's Active Lease (Identification only, functional status remains unchanged)
+    // 2. Freeze sender's lease as a historical transferred record (similar to termination)
+    activeLease.status = "transferred";
     activeLease.iuStatus = "IU Transferred";
-    activeLease.dateOfIUTransfer = transferDate;
+    activeLease.transferredToUserId = receiverId;
+    activeLease.dateOfIUTransfer = dateOfIUTransfer;
+    activeLease.leaseTerminationDate = dateOfIUTransfer;
     await activeLease.save({ session });
 
-    // 3. Clone all versions for the receiver
+    // 3. Clone all versions for receiver with exact lease data and same status/version chain
     const receiverIdMapping = new Map();
     let newOriginalLeaseId: any = null;
 
@@ -692,30 +709,21 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
       delete versionObj._id;
       delete versionObj.createdAt;
       delete versionObj.updatedAt;
+      delete versionObj.__v;
 
-      // Map to receiver's details
-      versionObj.userId = receiverUserId;
-      versionObj.userName = receiverUserName || "Unknown";
-      versionObj.location = receiverLocation || versionObj.location;
-      versionObj.locationId = receiverLocationId || versionObj.locationId;
-      versionObj.leaseGroup = receiverLeaseGroup || versionObj.leaseGroup;
+      // Minimal transfer metadata only; keep lease payload/status exactly same
+      versionObj.userId = receiverId;
+      versionObj.iuStatus = "IU Received";
+      versionObj.transferredFromUserId = senderUserId;
+      versionObj.dateOfIUReceived = dateOfIUReceived;
+      delete versionObj.dateOfIUTransfer;
+      delete versionObj.transferredToUserId;
 
       // Handle version linking
       if (versionObj.previousVersionId) {
         versionObj.previousVersionId = receiverIdMapping.get(
           versionObj.previousVersionId.toString(),
         );
-      }
-
-      // If it's the active version being transferred
-      if (oldId === id) {
-        versionObj.iuStatus = "IU Received";
-        versionObj.dateOfIUReceived = transferDate;
-        // Adjust the working period to start from the transfer date for the receiver's calculation
-        versionObj.leaseWorkingPeriod = [
-          transferDate,
-          versionObj.leaseWorkingPeriod[1],
-        ];
       }
 
       const clonedVersion = new leaseModel(versionObj);
@@ -762,7 +770,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc3ODM0NzUwNCwiZXhwIjoxNzc4NDMzOTA0fQ.y79T1X7eep4QJjgwAa9HY10STiF-hjzBZ-DJeNUvDHU";
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc3ODUyMTc1NywiZXhwIjoxNzc4NjA4MTU3fQ.xc99oG7OmwDtIM0H_PwJtgZV1V4kQ-aQkgAmpkZmEP8";
     const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {

@@ -19,10 +19,12 @@ interface ILease extends Document {
   userName?: string;
   location?: string;
   leaseGroup?: string;
-  status: "active" | "terminated" | "closed" | "modified";
+  status: "active" | "terminated" | "closed" | "modified" | "transferred";
   iuStatus?: "IU Transferred" | "IU Received";
   dateOfIUTransfer?: string;
   dateOfIUReceived?: string;
+  transferredToUserId?: mongoose.Types.ObjectId;
+  transferredFromUserId?: mongoose.Types.ObjectId;
   period: string;
   leasePeriod: string[];
   lockingPeriod: string[];
@@ -119,7 +121,7 @@ const LeaseSchema: Schema = new Schema(
     leaseGroup: { type: String, required: false },
     status: {
       type: String,
-      enum: ["active", "terminated", "closed", "modified"],
+      enum: ["active", "terminated", "closed", "modified", "transferred"],
       default: "active",
       required: false,
     },
