@@ -695,7 +695,9 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
     activeLease.iuStatus = "IU Transferred";
     activeLease.transferredToUserId = receiverId;
     activeLease.dateOfIUTransfer = dateOfIUTransfer;
-    activeLease.leaseTerminationDate = dateOfIUTransfer;
+    activeLease.iuTransferData = req.body.iuTransferData;
+    // Transferred leases should not inherit a termination date from the transfer event.
+    activeLease.leaseTerminationDate = undefined;
     await activeLease.save({ session });
 
     // 3. Clone all versions for receiver with exact lease data and same status/version chain
@@ -716,6 +718,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
       versionObj.iuStatus = "IU Received";
       versionObj.transferredFromUserId = senderUserId;
       versionObj.dateOfIUReceived = dateOfIUReceived;
+      versionObj.iuTransferData = req.body.iuTransferData;
       delete versionObj.dateOfIUTransfer;
       delete versionObj.transferredToUserId;
 
@@ -770,7 +773,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc3ODc3NjI3MywiZXhwIjoxNzc4ODYyNjczfQ.Sle8lbD6-Dw6DZ18gb0XL6AY3GeA8vESNyb0haCfXIM";
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc3ODk5OTk0NSwiZXhwIjoxNzc5MDg2MzQ1fQ.V9PccFeAGNLMizbfxY9DIPcacmdYQfyyaE7NdpJ4UJk";
     const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {

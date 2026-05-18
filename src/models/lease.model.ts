@@ -78,6 +78,15 @@ interface ILease extends Document {
   cutOffSecurityDeposit?: number;
   cutOffDatePrepaidRent?: number;
   leaseModificationDate?: string;
+  iuTransferData?: {
+    leaseLiability?: number;
+    rouGrossBlock?: number;
+    rouAccumulatedDepreciation?: number;
+    prepaidRent?: number;
+    prepaidRentAD?: number;
+    securityDeposit?: number;
+    interUnitReceivablePayable?: number;
+  };
   otherLeaseInformations?: {
     extensionOption?: boolean;
     purchaseOption?: boolean;
@@ -294,6 +303,15 @@ const LeaseSchema: Schema = new Schema(
       },
     },
     leaseModificationDate: { type: String, required: false },
+    iuTransferData: {
+      leaseLiability: { type: Number, required: false },
+      rouGrossBlock: { type: Number, required: false },
+      rouAccumulatedDepreciation: { type: Number, required: false },
+      prepaidRent: { type: Number, required: false },
+      prepaidRentAD: { type: Number, required: false },
+      securityDeposit: { type: Number, required: false },
+      interUnitReceivablePayable: { type: Number, required: false },
+    },
     otherLeaseInformations: {
       extensionOption: { type: Boolean, default: false },
       purchaseOption: { type: Boolean, default: false },
