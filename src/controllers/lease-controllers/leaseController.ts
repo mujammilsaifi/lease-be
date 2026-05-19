@@ -270,6 +270,27 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
       previousVersionId: originalData._id,
       versionNumber: (originalData.versionNumber || 1) + 1,
       status: "active",
+
+      // Preserve Transfer details during modification
+      iuStatus: modifyData.iuStatus || originalData.iuStatus || undefined,
+      dateOfIUTransfer:
+        modifyData.dateOfIUTransfer ||
+        originalData.dateOfIUTransfer ||
+        undefined,
+      dateOfIUReceived:
+        modifyData.dateOfIUReceived ||
+        originalData.dateOfIUReceived ||
+        undefined,
+      iuTransferData:
+        modifyData.iuTransferData || originalData.iuTransferData || undefined,
+      transferredToUserId:
+        modifyData.transferredToUserId ||
+        originalData.transferredToUserId ||
+        undefined,
+      transferredFromUserId:
+        modifyData.transferredFromUserId ||
+        originalData.transferredFromUserId ||
+        undefined,
     };
 
     const savedLease = await leaseModel.create([newLeaseData], { session });
@@ -364,6 +385,34 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
 
     const adminId = getAdminId(requestUser);
     const updateQuery: any = { $set: updateData };
+
+    // Map newUserId to transferredToUserId if frontend sent it
+    if (updateData.newUserId !== undefined) {
+      if (updateData.newUserId) {
+        updateQuery.$set.transferredToUserId = updateData.newUserId;
+      }
+      delete updateQuery.$set.newUserId;
+    }
+
+    // Preserve transfer information if it exists in the database but is missing or empty in the update payload
+    const transferFields = [
+      "iuStatus",
+      "dateOfIUTransfer",
+      "dateOfIUReceived",
+      "iuTransferData",
+      "transferredToUserId",
+      "transferredFromUserId",
+    ];
+    // Cast lease document to a record for safe dynamic key access
+    const existingLeaseRecord = existingLease as unknown as Record<string, any>;
+    for (const field of transferFields) {
+      if (
+        existingLeaseRecord[field] &&
+        (!updateQuery.$set[field] || updateQuery.$set[field] === "")
+      ) {
+        updateQuery.$set[field] = existingLeaseRecord[field];
+      }
+    }
 
     // Fill missing IDs from context if they aren't in the lease yet
     if (!existingLease.adminId && adminId) {
