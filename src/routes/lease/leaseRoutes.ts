@@ -15,6 +15,10 @@ import {
   saveMapping,
   getMapping,
 } from "../../controllers/lease-controllers/leaseAccountMappingController";
+import {
+  fetchBulkCaches,
+  saveBulkCaches,
+} from "../../controllers/lease-controllers/leaseCalculationCacheController";
 const router = express.Router();
 
 // Lease routes
@@ -33,5 +37,9 @@ router.get("/lease/:id/logs", getLeaseLogsController);
 // Lease Account Mapping routes
 router.get("/lease_account_mapping", getMapping);
 router.post("/lease_account_mapping", saveMapping);
+
+// Caching routes
+router.post("/lease-cache/fetch-bulk", fetchBulkCaches);
+router.post("/lease-cache/save-bulk", saveBulkCaches);
 
 export default router;

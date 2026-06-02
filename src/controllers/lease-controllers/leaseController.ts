@@ -2,6 +2,7 @@ import { RequestHandler } from "express";
 import dotenv from "dotenv";
 import leaseModel from "../../models/lease.model";
 import AuditLog from "../../models/auditLog.model";
+import LeaseCalculationCache from "../../models/leaseCalculationCache.model";
 import { getChanges } from "../../utils/diff";
 import mongoose from "mongoose";
 import { getUser } from "../../services/auth";
@@ -245,6 +246,9 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
     }
 
     await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { session });
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(
+      session,
+    );
 
     const newLeaseData = {
       ...modifyData,
@@ -455,6 +459,9 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
       new: true,
     });
 
+    // Delete the cache associated with this lease version since it has changed
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id });
+
     if (updatedLease) {
       // Calculate changes and log (non-blocking — audit failure must not affect the response)
       try {
@@ -634,6 +641,9 @@ export const deleteLeaseController: RequestHandler = async (req, res) => {
     // Delete the requested lease FIRST to avoid duplicate index error
     const deletedLease = await leaseModel.findByIdAndDelete(id);
 
+    // Delete the cache associated with this lease version
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id });
+
     // Log deletion
     if (leaseToDelete) {
       await AuditLog.create({
@@ -749,6 +759,9 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
     // Transferred leases should not inherit a termination date from the transfer event.
     activeLease.leaseTerminationDate = undefined;
     await activeLease.save({ session });
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(
+      session,
+    );
 
     // 3. Clone all versions for receiver with exact lease data and same status/version chain
     const receiverIdMapping = new Map();
@@ -823,7 +836,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MDE0NzYxNSwiZXhwIjoxNzgwMjM0MDE1fQ.UFbFCbERhcWxFwUcSfhO7WKzzdTIsw8W3Vfg2Y6gSNo";
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MDMyMjczMSwiZXhwIjoxNzgwNDA5MTMxfQ.caNJLMnmJgfKz_TF_7uItnzDPMFOqwXk-IhtT0-GlIo";
     const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {
