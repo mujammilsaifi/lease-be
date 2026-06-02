@@ -833,6 +833,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 /**
  * Get All Users Controller (Fetches from external Admin API)
  */
+// admin token
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
