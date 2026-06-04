@@ -3,15 +3,20 @@ import LeaseCalculationCache from "../../models/leaseCalculationCache.model";
 
 export const fetchBulkCaches = async (req: Request, res: Response) => {
   try {
-    const { leaseVersionIds, presentationPeriod } = req.body;
+    const { leaseVersionIds, presentationPeriod, includeDetails } = req.body;
     if (!Array.isArray(leaseVersionIds) || !presentationPeriod) {
       return res.status(400).json({ success: false, message: "leaseVersionIds array and presentationPeriod are required" });
     }
 
-    const caches = await LeaseCalculationCache.find({
-      leaseVersionId: { $in: leaseVersionIds },
-      presentationPeriod,
-    }).lean();
+    const projection = includeDetails === false ? { detailsData: 0 } : {};
+
+    const caches = await LeaseCalculationCache.find(
+      {
+        leaseVersionId: { $in: leaseVersionIds },
+        presentationPeriod,
+      },
+      projection
+    ).lean();
 
     const cacheMap = caches.reduce((acc, cache) => {
       acc[cache.leaseVersionId.toString()] = {

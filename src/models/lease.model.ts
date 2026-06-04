@@ -337,4 +337,8 @@ LeaseSchema.index(
   },
 );
 
+LeaseSchema.index({ userId: 1 });
+LeaseSchema.index({ adminId: 1 });
+LeaseSchema.index({ originalLeaseId: 1 });
+
 export default mongoose.model<ILease>("Lease", LeaseSchema);
