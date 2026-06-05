@@ -10,6 +10,10 @@ import {
   updateLeaseController,
   leaseTransferController,
   getAllUsersController,
+  requestUndoTransferController,
+  cancelUndoTransferController,
+  approveUndoTransferController,
+  rejectUndoTransferController,
 } from "../../controllers/lease-controllers/leaseController";
 import {
   saveMapping,
@@ -31,6 +35,10 @@ router.get("/users", getAllUsersController);
 router.delete("/lease/:id", deleteLeaseController);
 router.put("/lease-modification/:id", leaseModificationController);
 router.post("/lease-transfer/:id", leaseTransferController);
+router.post("/lease-transfer/request-undo/:id", requestUndoTransferController);
+router.post("/lease-transfer/cancel-undo/:id", cancelUndoTransferController);
+router.post("/lease-transfer/approve-undo/:id", approveUndoTransferController);
+router.post("/lease-transfer/reject-undo/:id", rejectUndoTransferController);
 router.get("/lease/all/logs", getAllLeaseLogsController);
 router.get("/lease/:id/logs", getLeaseLogsController);
 

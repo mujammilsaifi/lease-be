@@ -872,3 +872,353 @@ export const getAllUsersController: RequestHandler = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
+
+/**
+ * Request Undo Transfer Controller (Sender side)
+ */
+export const requestUndoTransferController: RequestHandler = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params; // Active Lease ID of the sender (the transferred lease)
+
+    const senderLease = await leaseModel.findById(id).session(session);
+    if (!senderLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Lease not found" });
+    }
+
+    if (senderLease.status !== "transferred") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "Only transferred leases can request undo" });
+    }
+
+    const receiverUserId = senderLease.transferredToUserId;
+    if (!receiverUserId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "Receiver info not found on the transferred lease" });
+    }
+
+    // Find receiver's corresponding active lease
+    const receiverActiveLease = await leaseModel.findOne({
+      userId: receiverUserId,
+      transferredFromUserId: senderLease.userId,
+      lessorName: senderLease.lessorName,
+      status: { $in: ["active", "terminated", "closed", "transferred"] }
+    }).session(session);
+
+    if (!receiverActiveLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Active lease on the receiver side not found" });
+    }
+
+    // Update status to pending on both sender's lease and receiver's active lease
+    senderLease.transferUndoStatus = "pending";
+    receiverActiveLease.transferUndoStatus = "pending";
+
+    await senderLease.save({ session });
+    await receiverActiveLease.save({ session });
+
+    // Clear caches
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(session);
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: receiverActiveLease._id }).session(session);
+
+    // Audit log
+    await AuditLog.create({
+      entityType: "Lease",
+      entityId: senderLease.originalLeaseId || senderLease._id,
+      entityName: senderLease.lessorName,
+      action: "REQUEST_UNDO_TRANSFER",
+      performedBy: senderLease.userId || "System",
+      changes: { transferUndoStatus: "pending" },
+      timestamp: new Date(),
+    });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Undo request sent successfully. Waiting for receiver's approval.",
+    });
+  } catch (error: any) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error("Request undo transfer error:", error);
+    return res.status(500).json({ error: "Request failed", details: error.message });
+  }
+};
+
+/**
+ * Cancel Undo Transfer Controller (Sender side)
+ */
+export const cancelUndoTransferController: RequestHandler = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params;
+
+    const senderLease = await leaseModel.findById(id).session(session);
+    if (!senderLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Lease not found" });
+    }
+
+    if (senderLease.transferUndoStatus !== "pending") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "No pending undo request found" });
+    }
+
+    const receiverUserId = senderLease.transferredToUserId;
+    if (!receiverUserId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "Receiver info not found" });
+    }
+
+    const receiverActiveLease = await leaseModel.findOne({
+      userId: receiverUserId,
+      transferredFromUserId: senderLease.userId,
+      lessorName: senderLease.lessorName,
+      status: { $in: ["active", "terminated", "closed", "transferred"] }
+    }).session(session);
+
+    // Unset transferUndoStatus on sender lease
+    await leaseModel.findByIdAndUpdate(
+      senderLease._id,
+      { $unset: { transferUndoStatus: "" } },
+      { session }
+    );
+
+    // Unset transferUndoStatus on receiver active lease if exists
+    if (receiverActiveLease) {
+      await leaseModel.findByIdAndUpdate(
+        receiverActiveLease._id,
+        { $unset: { transferUndoStatus: "" } },
+        { session }
+      );
+      await LeaseCalculationCache.deleteMany({ leaseVersionId: receiverActiveLease._id }).session(session);
+    }
+
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(session);
+
+    await AuditLog.create({
+      entityType: "Lease",
+      entityId: senderLease.originalLeaseId || senderLease._id,
+      entityName: senderLease.lessorName,
+      action: "CANCEL_UNDO_TRANSFER",
+      performedBy: senderLease.userId || "System",
+      changes: { transferUndoStatus: "cancelled" },
+      timestamp: new Date(),
+    });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Undo request cancelled successfully.",
+    });
+  } catch (error: any) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error("Cancel undo transfer error:", error);
+    return res.status(500).json({ error: "Cancel failed", details: error.message });
+  }
+};
+
+/**
+ * Approve Undo Transfer Controller (Receiver side)
+ */
+export const approveUndoTransferController: RequestHandler = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params; // Active Lease ID of the receiver
+
+    const receiverLease = await leaseModel.findById(id).session(session);
+    if (!receiverLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Lease not found" });
+    }
+
+    if (receiverLease.transferUndoStatus !== "pending") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "No pending undo request found for this lease" });
+    }
+
+    const senderUserId = receiverLease.transferredFromUserId;
+    if (!senderUserId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "Sender info not found on the transferred lease" });
+    }
+
+    // Find sender's corresponding transferred lease
+    const senderLease = await leaseModel.findOne({
+      userId: senderUserId,
+      transferredToUserId: receiverLease.userId,
+      lessorName: receiverLease.lessorName,
+      status: "transferred"
+    }).session(session);
+
+    if (!senderLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Sender's transferred lease not found" });
+    }
+
+    // 1. Delete all versions of the cloned lease on the receiver's side
+    const receiverQuery = {
+      userId: receiverLease.userId,
+      transferredFromUserId: senderUserId,
+      lessorName: receiverLease.lessorName
+    };
+
+    const receiverLeasesToDelete = await leaseModel.find(receiverQuery).select("_id").session(session);
+    const receiverLeaseIds = receiverLeasesToDelete.map(l => l._id);
+
+    await leaseModel.deleteMany(receiverQuery).session(session);
+
+    if (receiverLeaseIds.length > 0) {
+      await LeaseCalculationCache.deleteMany({ leaseVersionId: { $in: receiverLeaseIds } }).session(session);
+    }
+
+    // 2. Restore sender's lease status and clear transfer details
+    await leaseModel.findByIdAndUpdate(
+      senderLease._id,
+      {
+        $set: { status: "active" },
+        $unset: {
+          iuStatus: "",
+          dateOfIUTransfer: "",
+          transferredToUserId: "",
+          iuTransferData: "",
+          transferUndoStatus: ""
+        }
+      },
+      { session }
+    );
+
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: senderLease._id }).session(session);
+
+    await AuditLog.create({
+      entityType: "Lease",
+      entityId: senderLease.originalLeaseId || senderLease._id,
+      entityName: senderLease.lessorName,
+      action: "APPROVE_UNDO_TRANSFER",
+      performedBy: receiverLease.userId || "System",
+      changes: { status: { from: "transferred", to: "active" } },
+      timestamp: new Date(),
+    });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Undo request approved. The lease has been returned to the sender.",
+    });
+  } catch (error: any) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error("Approve undo transfer error:", error);
+    return res.status(500).json({ error: "Approval failed", details: error.message });
+  }
+};
+
+/**
+ * Reject Undo Transfer Controller (Receiver side)
+ */
+export const rejectUndoTransferController: RequestHandler = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params; // Active Lease ID of the receiver
+
+    const receiverLease = await leaseModel.findById(id).session(session);
+    if (!receiverLease) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Lease not found" });
+    }
+
+    if (receiverLease.transferUndoStatus !== "pending") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "No pending undo request found for this lease" });
+    }
+
+    const senderUserId = receiverLease.transferredFromUserId;
+    if (!senderUserId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: "Sender info not found on the transferred lease" });
+    }
+
+    const senderLease = await leaseModel.findOne({
+      userId: senderUserId,
+      transferredToUserId: receiverLease.userId,
+      lessorName: receiverLease.lessorName,
+      status: "transferred"
+    }).session(session);
+
+    // Unset transferUndoStatus on receiver lease
+    await leaseModel.findByIdAndUpdate(
+      receiverLease._id,
+      { $unset: { transferUndoStatus: "" } },
+      { session }
+    );
+
+    // Unset transferUndoStatus on sender lease
+    if (senderLease) {
+      await leaseModel.findByIdAndUpdate(
+        senderLease._id,
+        { $unset: { transferUndoStatus: "" } },
+        { session }
+      );
+      await LeaseCalculationCache.deleteMany({ leaseVersionId: senderLease._id }).session(session);
+    }
+
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(session);
+
+    await AuditLog.create({
+      entityType: "Lease",
+      entityId: receiverLease.originalLeaseId || receiverLease._id,
+      entityName: receiverLease.lessorName,
+      action: "REJECT_UNDO_TRANSFER",
+      performedBy: receiverLease.userId || "System",
+      changes: { transferUndoStatus: "rejected" },
+      timestamp: new Date(),
+    });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Undo request rejected.",
+    });
+  } catch (error: any) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error("Reject undo transfer error:", error);
+    return res.status(500).json({ error: "Rejection failed", details: error.message });
+  }
+};

@@ -96,6 +96,7 @@ interface ILease extends Document {
     date: string;
     amount: number;
   }[];
+  transferUndoStatus?: "pending" | "rejected";
 }
 
 // Mongoose Schema
@@ -323,6 +324,7 @@ const LeaseSchema: Schema = new Schema(
         amount: { type: Number, required: true },
       },
     ],
+    transferUndoStatus: { type: String, enum: ["pending", "rejected"], required: false },
   },
   { timestamps: true },
 );
