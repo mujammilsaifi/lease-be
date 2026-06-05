@@ -837,7 +837,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MDU2MzA5MSwiZXhwIjoxNzgwNjQ5NDkxfQ.Q0V80Ui9u32wkkoc2lDwh3jMSQlice1kAWG04hjw5bc";
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MDY3OTI2NiwiZXhwIjoxNzgwNzY1NjY2fQ.rJ9bz1t5bLsp-nxGppZpFWuhyW49RqzhhqrVlvgqjAQ";
     const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {
@@ -876,7 +876,10 @@ export const getAllUsersController: RequestHandler = async (req, res) => {
 /**
  * Request Undo Transfer Controller (Sender side)
  */
-export const requestUndoTransferController: RequestHandler = async (req, res) => {
+export const requestUndoTransferController: RequestHandler = async (
+  req,
+  res,
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -893,28 +896,36 @@ export const requestUndoTransferController: RequestHandler = async (req, res) =>
     if (senderLease.status !== "transferred") {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "Only transferred leases can request undo" });
+      return res
+        .status(400)
+        .json({ error: "Only transferred leases can request undo" });
     }
 
     const receiverUserId = senderLease.transferredToUserId;
     if (!receiverUserId) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "Receiver info not found on the transferred lease" });
+      return res
+        .status(400)
+        .json({ error: "Receiver info not found on the transferred lease" });
     }
 
     // Find receiver's corresponding active lease
-    const receiverActiveLease = await leaseModel.findOne({
-      userId: receiverUserId,
-      transferredFromUserId: senderLease.userId,
-      lessorName: senderLease.lessorName,
-      status: { $in: ["active", "terminated", "closed", "transferred"] }
-    }).session(session);
+    const receiverActiveLease = await leaseModel
+      .findOne({
+        userId: receiverUserId,
+        transferredFromUserId: senderLease.userId,
+        lessorName: senderLease.lessorName,
+        status: { $in: ["active", "terminated", "closed", "transferred"] },
+      })
+      .session(session);
 
     if (!receiverActiveLease) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ error: "Active lease on the receiver side not found" });
+      return res
+        .status(404)
+        .json({ error: "Active lease on the receiver side not found" });
     }
 
     // Update status to pending on both sender's lease and receiver's active lease
@@ -925,8 +936,12 @@ export const requestUndoTransferController: RequestHandler = async (req, res) =>
     await receiverActiveLease.save({ session });
 
     // Clear caches
-    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(session);
-    await LeaseCalculationCache.deleteMany({ leaseVersionId: receiverActiveLease._id }).session(session);
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(
+      session,
+    );
+    await LeaseCalculationCache.deleteMany({
+      leaseVersionId: receiverActiveLease._id,
+    }).session(session);
 
     // Audit log
     await AuditLog.create({
@@ -943,7 +958,8 @@ export const requestUndoTransferController: RequestHandler = async (req, res) =>
     session.endSession();
 
     return res.status(200).json({
-      message: "Undo request sent successfully. Waiting for receiver's approval.",
+      message:
+        "Undo request sent successfully. Waiting for receiver's approval.",
     });
   } catch (error: any) {
     if (session.inTransaction()) {
@@ -951,14 +967,19 @@ export const requestUndoTransferController: RequestHandler = async (req, res) =>
     }
     session.endSession();
     console.error("Request undo transfer error:", error);
-    return res.status(500).json({ error: "Request failed", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Request failed", details: error.message });
   }
 };
 
 /**
  * Cancel Undo Transfer Controller (Sender side)
  */
-export const cancelUndoTransferController: RequestHandler = async (req, res) => {
+export const cancelUndoTransferController: RequestHandler = async (
+  req,
+  res,
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -985,18 +1006,20 @@ export const cancelUndoTransferController: RequestHandler = async (req, res) => 
       return res.status(400).json({ error: "Receiver info not found" });
     }
 
-    const receiverActiveLease = await leaseModel.findOne({
-      userId: receiverUserId,
-      transferredFromUserId: senderLease.userId,
-      lessorName: senderLease.lessorName,
-      status: { $in: ["active", "terminated", "closed", "transferred"] }
-    }).session(session);
+    const receiverActiveLease = await leaseModel
+      .findOne({
+        userId: receiverUserId,
+        transferredFromUserId: senderLease.userId,
+        lessorName: senderLease.lessorName,
+        status: { $in: ["active", "terminated", "closed", "transferred"] },
+      })
+      .session(session);
 
     // Unset transferUndoStatus on sender lease
     await leaseModel.findByIdAndUpdate(
       senderLease._id,
       { $unset: { transferUndoStatus: "" } },
-      { session }
+      { session },
     );
 
     // Unset transferUndoStatus on receiver active lease if exists
@@ -1004,12 +1027,16 @@ export const cancelUndoTransferController: RequestHandler = async (req, res) => 
       await leaseModel.findByIdAndUpdate(
         receiverActiveLease._id,
         { $unset: { transferUndoStatus: "" } },
-        { session }
+        { session },
       );
-      await LeaseCalculationCache.deleteMany({ leaseVersionId: receiverActiveLease._id }).session(session);
+      await LeaseCalculationCache.deleteMany({
+        leaseVersionId: receiverActiveLease._id,
+      }).session(session);
     }
 
-    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(session);
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(
+      session,
+    );
 
     await AuditLog.create({
       entityType: "Lease",
@@ -1033,14 +1060,19 @@ export const cancelUndoTransferController: RequestHandler = async (req, res) => 
     }
     session.endSession();
     console.error("Cancel undo transfer error:", error);
-    return res.status(500).json({ error: "Cancel failed", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Cancel failed", details: error.message });
   }
 };
 
 /**
  * Approve Undo Transfer Controller (Receiver side)
  */
-export const approveUndoTransferController: RequestHandler = async (req, res) => {
+export const approveUndoTransferController: RequestHandler = async (
+  req,
+  res,
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -1057,44 +1089,57 @@ export const approveUndoTransferController: RequestHandler = async (req, res) =>
     if (receiverLease.transferUndoStatus !== "pending") {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "No pending undo request found for this lease" });
+      return res
+        .status(400)
+        .json({ error: "No pending undo request found for this lease" });
     }
 
     const senderUserId = receiverLease.transferredFromUserId;
     if (!senderUserId) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "Sender info not found on the transferred lease" });
+      return res
+        .status(400)
+        .json({ error: "Sender info not found on the transferred lease" });
     }
 
     // Find sender's corresponding transferred lease
-    const senderLease = await leaseModel.findOne({
-      userId: senderUserId,
-      transferredToUserId: receiverLease.userId,
-      lessorName: receiverLease.lessorName,
-      status: "transferred"
-    }).session(session);
+    const senderLease = await leaseModel
+      .findOne({
+        userId: senderUserId,
+        transferredToUserId: receiverLease.userId,
+        lessorName: receiverLease.lessorName,
+        status: "transferred",
+      })
+      .session(session);
 
     if (!senderLease) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ error: "Sender's transferred lease not found" });
+      return res
+        .status(404)
+        .json({ error: "Sender's transferred lease not found" });
     }
 
     // 1. Delete all versions of the cloned lease on the receiver's side
     const receiverQuery = {
       userId: receiverLease.userId,
       transferredFromUserId: senderUserId,
-      lessorName: receiverLease.lessorName
+      lessorName: receiverLease.lessorName,
     };
 
-    const receiverLeasesToDelete = await leaseModel.find(receiverQuery).select("_id").session(session);
-    const receiverLeaseIds = receiverLeasesToDelete.map(l => l._id);
+    const receiverLeasesToDelete = await leaseModel
+      .find(receiverQuery)
+      .select("_id")
+      .session(session);
+    const receiverLeaseIds = receiverLeasesToDelete.map((l) => l._id);
 
     await leaseModel.deleteMany(receiverQuery).session(session);
 
     if (receiverLeaseIds.length > 0) {
-      await LeaseCalculationCache.deleteMany({ leaseVersionId: { $in: receiverLeaseIds } }).session(session);
+      await LeaseCalculationCache.deleteMany({
+        leaseVersionId: { $in: receiverLeaseIds },
+      }).session(session);
     }
 
     // 2. Restore sender's lease status and clear transfer details
@@ -1107,13 +1152,15 @@ export const approveUndoTransferController: RequestHandler = async (req, res) =>
           dateOfIUTransfer: "",
           transferredToUserId: "",
           iuTransferData: "",
-          transferUndoStatus: ""
-        }
+          transferUndoStatus: "",
+        },
       },
-      { session }
+      { session },
     );
 
-    await LeaseCalculationCache.deleteMany({ leaseVersionId: senderLease._id }).session(session);
+    await LeaseCalculationCache.deleteMany({
+      leaseVersionId: senderLease._id,
+    }).session(session);
 
     await AuditLog.create({
       entityType: "Lease",
@@ -1129,7 +1176,8 @@ export const approveUndoTransferController: RequestHandler = async (req, res) =>
     session.endSession();
 
     return res.status(200).json({
-      message: "Undo request approved. The lease has been returned to the sender.",
+      message:
+        "Undo request approved. The lease has been returned to the sender.",
     });
   } catch (error: any) {
     if (session.inTransaction()) {
@@ -1137,14 +1185,19 @@ export const approveUndoTransferController: RequestHandler = async (req, res) =>
     }
     session.endSession();
     console.error("Approve undo transfer error:", error);
-    return res.status(500).json({ error: "Approval failed", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Approval failed", details: error.message });
   }
 };
 
 /**
  * Reject Undo Transfer Controller (Receiver side)
  */
-export const rejectUndoTransferController: RequestHandler = async (req, res) => {
+export const rejectUndoTransferController: RequestHandler = async (
+  req,
+  res,
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -1161,28 +1214,34 @@ export const rejectUndoTransferController: RequestHandler = async (req, res) => 
     if (receiverLease.transferUndoStatus !== "pending") {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "No pending undo request found for this lease" });
+      return res
+        .status(400)
+        .json({ error: "No pending undo request found for this lease" });
     }
 
     const senderUserId = receiverLease.transferredFromUserId;
     if (!senderUserId) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "Sender info not found on the transferred lease" });
+      return res
+        .status(400)
+        .json({ error: "Sender info not found on the transferred lease" });
     }
 
-    const senderLease = await leaseModel.findOne({
-      userId: senderUserId,
-      transferredToUserId: receiverLease.userId,
-      lessorName: receiverLease.lessorName,
-      status: "transferred"
-    }).session(session);
+    const senderLease = await leaseModel
+      .findOne({
+        userId: senderUserId,
+        transferredToUserId: receiverLease.userId,
+        lessorName: receiverLease.lessorName,
+        status: "transferred",
+      })
+      .session(session);
 
     // Unset transferUndoStatus on receiver lease
     await leaseModel.findByIdAndUpdate(
       receiverLease._id,
       { $unset: { transferUndoStatus: "" } },
-      { session }
+      { session },
     );
 
     // Unset transferUndoStatus on sender lease
@@ -1190,12 +1249,16 @@ export const rejectUndoTransferController: RequestHandler = async (req, res) => 
       await leaseModel.findByIdAndUpdate(
         senderLease._id,
         { $unset: { transferUndoStatus: "" } },
-        { session }
+        { session },
       );
-      await LeaseCalculationCache.deleteMany({ leaseVersionId: senderLease._id }).session(session);
+      await LeaseCalculationCache.deleteMany({
+        leaseVersionId: senderLease._id,
+      }).session(session);
     }
 
-    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(session);
+    await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(
+      session,
+    );
 
     await AuditLog.create({
       entityType: "Lease",
@@ -1219,6 +1282,8 @@ export const rejectUndoTransferController: RequestHandler = async (req, res) => 
     }
     session.endSession();
     console.error("Reject undo transfer error:", error);
-    return res.status(500).json({ error: "Rejection failed", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Rejection failed", details: error.message });
   }
 };
