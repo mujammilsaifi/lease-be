@@ -13,7 +13,14 @@
     "prepare": "husky install",
     "test": "echo 'Error: no test specified' && exit 1"
   },
-  "keywords": ["ledgers", "closer", "express", "typescript", "mongo", "nodemailer"],
+  "keywords": [
+    "ledgers",
+    "closer",
+    "express",
+    "typescript",
+    "mongo",
+    "nodemailer"
+  ],
   "author": "Mujammil Khan",
   "license": "ISC",
   "devDependencies": {
@@ -22,8 +29,10 @@
     "@types/express": "^4.17.21",
     "@types/hpp": "^0.2.5",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/multer": "^2.1.0",
     "@types/node": "^20.9.0",
     "@types/nodemailer": "^6.4.14",
+    "@types/pdf-parse": "^1.1.5",
     "@typescript-eslint/eslint-plugin": "^6.18.1",
     "@typescript-eslint/parser": "^6.18.1",
     "eslint": "^8.56.0",
@@ -41,9 +50,9 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
+    "@google/genai": "^2.8.0",
     "@types/cors": "^2.8.16",
     "@types/morgan": "^1.9.9",
-    "@types/multer": "^1.4.10",
     "@types/uuid": "^9.0.7",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
@@ -61,6 +70,8 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.8",
+    "pdf-parse": "^2.4.5",
+    "tesseract.js": "^7.0.0",
     "uuid": "^9.0.0"
   },
   "repository": {
