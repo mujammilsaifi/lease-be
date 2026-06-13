@@ -19,7 +19,6 @@ import {
   saveMapping,
   getMapping,
 } from "../../controllers/lease-controllers/leaseAccountMappingController";
-import { extractPdfController } from "../../controllers/lease-controllers/pdfExtractionController";
 import multer from "multer";
 
 const upload = multer({ dest: "uploads/" });
@@ -34,7 +33,20 @@ router.get("/lease", getLeaseController);
 // Lease routes for movement
 router.get("/lease/movement", getLeaseFormovementController);
 router.post("/lease", leaseController);
-router.post("/lease/extract-pdf", upload.single("pdfFile"), extractPdfController);
+router.post(
+  "/lease/extract-pdf",
+  upload.single("pdfFile"),
+  async (req, res, next) => {
+    try {
+      const { extractPdfController } = await import(
+        "../../controllers/lease-controllers/pdfExtractionController"
+      );
+      return extractPdfController(req, res);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 router.put("/lease/:id", updateLeaseController);
 router.get("/users", getAllUsersController);
 router.delete("/lease/:id", deleteLeaseController);

@@ -1,13 +1,15 @@
 import { Request, Response } from "express";
 import fs from "fs";
-import { PDFParse } from "pdf-parse";
-import { createWorker } from "tesseract.js";
-import { GoogleGenAI } from "@google/genai";
 
 async function performOCR(filePath: string): Promise<string> {
   console.log("OCR Triggered for file:", filePath);
   let parser;
   try {
+    const [{ PDFParse }, { createWorker }] = await Promise.all([
+      import("pdf-parse"),
+      import("tesseract.js"),
+    ]);
+
     const fileBuffer = fs.readFileSync(filePath);
     parser = new PDFParse({ data: fileBuffer });
 
@@ -60,6 +62,7 @@ async function callGemini(
   content: string,
   formatJson = false,
 ): Promise<string> {
+  const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: geminiApiKey });
   const request: any = {
     model: geminiModel,
@@ -81,17 +84,18 @@ async function callGemini(
   if (usage) {
     const inputTokens = usage.promptTokenCount || 0;
     const outputTokens = usage.candidatesTokenCount || 0;
-    
+
     // Assuming standard Gemini 1.5/2.5 Flash pricing (<128k context):
     // Input: $0.075 per 1M tokens | Output: $0.30 per 1M tokens
-    const costUsd = (inputTokens / 1000000) * 0.075 + (outputTokens / 1000000) * 0.30;
+    const costUsd =
+      (inputTokens / 1000000) * 0.075 + (outputTokens / 1000000) * 0.3;
     const costInr = costUsd * 95; // 1 USD = 95 INR
 
     console.log(
       `[Gemini Cost Estimate] Model: ${geminiModel} | ` +
-      `Input Tokens: ${inputTokens} | ` +
-      `Output Tokens: ${outputTokens} | ` +
-      `Est. Cost: ₹${costInr.toFixed(4)}`
+        `Input Tokens: ${inputTokens} | ` +
+        `Output Tokens: ${outputTokens} | ` +
+        `Est. Cost: ₹${costInr.toFixed(4)}`,
     );
   }
 
