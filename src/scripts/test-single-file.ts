@@ -7,7 +7,6 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 async function performOCR(filePath: string): Promise<string> {
-  console.log("OCR triggered for file:", filePath);
   let parser;
   try {
     const fileBuffer = fs.readFileSync(filePath);
@@ -23,9 +22,13 @@ async function performOCR(filePath: string): Promise<string> {
 
     for (const page of screenshots.pages) {
       if (!page.data) {
-        throw new Error(`Page ${page.pageNumber} rendered image buffer is empty`);
+        throw new Error(
+          `Page ${page.pageNumber} rendered image buffer is empty`,
+        );
       }
-      console.log(`Performing OCR on page ${page.pageNumber}/${screenshots.pages.length}...`);
+      console.log(
+        `Performing OCR on page ${page.pageNumber}/${screenshots.pages.length}...`,
+      );
       const {
         data: { text },
       } = await worker.recognize(Buffer.from(page.data));
@@ -43,7 +46,10 @@ async function performOCR(filePath: string): Promise<string> {
   }
 }
 
-async function callGemini(content: string, formatJson = false): Promise<string> {
+async function callGemini(
+  content: string,
+  formatJson = false,
+): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured.");
