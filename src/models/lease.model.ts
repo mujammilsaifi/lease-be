@@ -96,6 +96,10 @@ interface ILease extends Document {
     date: string;
     amount: number;
   }[];
+  rouAdjustments?: {
+    adjustmentDate: string;
+    adjustmentAmount: number;
+  }[];
   transferUndoStatus?: "pending" | "rejected";
 }
 
@@ -322,6 +326,12 @@ const LeaseSchema: Schema = new Schema(
       {
         date: { type: String, required: true },
         amount: { type: Number, required: true },
+      },
+    ],
+    rouAdjustments: [
+      {
+        adjustmentDate: { type: String, required: true },
+        adjustmentAmount: { type: Number, required: true },
       },
     ],
     transferUndoStatus: { type: String, enum: ["pending", "rejected"], required: false },
