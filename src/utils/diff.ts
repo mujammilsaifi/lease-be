@@ -211,7 +211,6 @@ const FIELD_LABELS: Record<string, string> = {
   rentPaymentDate: "Rent Payment Date",
   securityDeposit: "Security Deposit",
   leaseEqualizationPertaining: "Lease Equalization Pertaining",
-  otherAdjustmentInRightOfUse: "Other Adjustment in Right of Use",
   discountingRates: "Discounting Rates",
   systematicEscalations: "Systematic Escalations",
   adhocEscalations: "Adhoc Escalations",

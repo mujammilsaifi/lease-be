@@ -38,7 +38,7 @@ interface ILease extends Document {
   rentPaymentDate: number | string;
   securityDeposit?: number;
   leaseEqualizationPertaining?: number;
-  otherAdjustmentInRightOfUse?: number;
+
   discountingRates?: {
     dateRange: string[];
     rate: number;
@@ -189,7 +189,7 @@ const LeaseSchema: Schema = new Schema(
     },
     securityDeposit: { type: Number, required: false },
     leaseEqualizationPertaining: { type: Number, required: false },
-    otherAdjustmentInRightOfUse: { type: Number, required: false },
+
     discountingRates: [
       {
         dateRange: { type: [String], required: true },

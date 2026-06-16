@@ -245,6 +245,30 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "Invalid lease data provided" });
     }
 
+    // Validate Modification Date against ROU adjustments
+    if (originalData.rouAdjustments && originalData.rouAdjustments.length > 0) {
+      const latestAdjDate = originalData.rouAdjustments.reduce(
+        (latest, adj) => {
+          if (!adj.adjustmentDate) return latest;
+          const adjTime = new Date(adj.adjustmentDate).getTime();
+          return adjTime > latest ? adjTime : latest;
+        },
+        0,
+      );
+
+      if (latestAdjDate > 0 && modifyData.leaseModificationDate) {
+        const modTime = new Date(modifyData.leaseModificationDate).getTime();
+        if (modTime < latestAdjDate) {
+          await session.abortTransaction();
+          session.endSession();
+          return res.status(400).json({
+            error:
+              "Modification date cannot be earlier than the latest ROU adjustment date.",
+          });
+        }
+      }
+    }
+
     await leaseModel.findByIdAndUpdate(id, { status: "modified" }, { session });
     await LeaseCalculationCache.deleteMany({ leaseVersionId: id }).session(
       session,
@@ -255,6 +279,16 @@ export const leaseModificationController: RequestHandler = async (req, res) => {
       userId: originalData.userId,
       adminId: originalData.adminId || undefined,
       locationId: modifyData.locationId || originalData.locationId || undefined,
+      rouAdjustments: Array.isArray(modifyData.rouAdjustments)
+        ? modifyData.rouAdjustments.filter((adj: any) => {
+            if (!adj.adjustmentDate || !modifyData.leaseModificationDate)
+              return true;
+            return (
+              new Date(adj.adjustmentDate).getTime() >=
+              new Date(modifyData.leaseModificationDate).getTime()
+            );
+          })
+        : undefined,
       leasePeriod:
         modifyData.leasePeriod && modifyData.leasePeriod.length === 2
           ? modifyData.leasePeriod
@@ -364,6 +398,21 @@ export const updateLeaseController: RequestHandler = async (req, res) => {
     const existingLease = await leaseModel.findById(id);
     if (!existingLease) {
       return res.status(404).json({ message: "Lease not found" });
+    }
+
+    // Validate subsequent ROU adjustments against modification date
+    if (existingLease.leaseModificationDate && updateData.rouAdjustments) {
+      const modTime = new Date(existingLease.leaseModificationDate).getTime();
+      const invalidAdj = updateData.rouAdjustments.find((adj: any) => {
+        if (!adj.adjustmentDate) return false;
+        return new Date(adj.adjustmentDate).getTime() < modTime;
+      });
+      if (invalidAdj) {
+        return res.status(400).json({
+          error:
+            "ROU adjustment date cannot be earlier than the lease modification date.",
+        });
+      }
     }
 
     // Check if lessorName is being updated and if it would cause a duplicate
@@ -837,7 +886,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MTU0MDUzOSwiZXhwIjoxNzgxNjI2OTM5fQ.5wm6zIpqpDtfXCdDy0bG22hI6iaOiQI-gkQT_uc__Lc";
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MTYyNDkxNCwiZXhwIjoxNzgxNzExMzE0fQ.288bDy1ll8aBsNso9GNeVy8-GLzh-iSeANztIWOR6ik";
     const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {
