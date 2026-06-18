@@ -61,7 +61,7 @@ async function callGemini(
   geminiModel: string,
   content: string,
   formatJson = false,
-): Promise<string> {
+): Promise<{ text: string; costInr: number }> {
   const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: geminiApiKey });
   const request: any = {
@@ -81,6 +81,7 @@ async function callGemini(
 
   // Log token usage and estimated cost
   const usage = response.usageMetadata;
+  let finalCostInr = 0;
   if (usage) {
     const inputTokens = usage.promptTokenCount || 0;
     const outputTokens = usage.candidatesTokenCount || 0;
@@ -90,6 +91,7 @@ async function callGemini(
     const costUsd =
       (inputTokens / 1000000) * 0.075 + (outputTokens / 1000000) * 0.3;
     const costInr = costUsd * 95; // 1 USD = 95 INR
+    finalCostInr = costInr;
 
     console.log(
       `[Gemini Cost Estimate] Model: ${geminiModel} | ` +
@@ -103,7 +105,7 @@ async function callGemini(
     throw new Error("Empty response received from Gemini model.");
   }
 
-  return responseText.trim();
+  return { text: responseText.trim(), costInr: finalCostInr };
 }
 
 function cleanJsonResponse(responseText: string): string {
@@ -161,6 +163,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
     let pdfData;
     let parser;
     try {
+      const { PDFParse } = await import("pdf-parse");
       parser = new PDFParse({ data: fileBuffer });
       pdfData = await parser.getText();
     } catch (parseErr: any) {
@@ -175,9 +178,12 @@ export const extractPdfController = async (req: Request, res: Response) => {
 
     let extractedText = pdfData.text || "";
 
-    // 2. Check text threshold (500 chars) for scanned PDF
-    if (extractedText.trim().length < 500) {
-      console.log("Extracted text length is low. Triggering OCR...");
+    // 2. Check text threshold for scanned PDF (heuristic: avg chars per page or total chars)
+    const numPages = pdfData.total || 1;
+    const avgCharsPerPage = extractedText.trim().length / numPages;
+    
+    if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
+      console.log(`Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(avgCharsPerPage)} chars/page). Triggering OCR...`);
       extractedText = await performOCR(req.file.path);
     }
 
@@ -308,19 +314,22 @@ export const extractPdfController = async (req: Request, res: Response) => {
     console.log(
       `Analyzing lease text (${processedText.length} characters) with Gemini model ${geminiModel}...`,
     );
-    const leaseAnalysis = await callGemini(
+    const { text: leaseAnalysis, costInr: cost1 } = await callGemini(
       geminiApiKey,
       geminiModel,
       analysisPrompt,
     );
 
     console.log("Converting lease analysis into required JSON schema...");
-    const responseText = await callGemini(
+    const { text: responseText, costInr: cost2 } = await callGemini(
       geminiApiKey,
       geminiModel,
       schemaPrompt.replace("{{LEASE_ANALYSIS}}", leaseAnalysis),
       true,
     );
+
+    const totalCostInr = cost1 + cost2;
+    console.log(`[Gemini Total Cost] This extraction cost a total of ₹${totalCostInr.toFixed(4)}`);
 
     const parsedJson = JSON.parse(cleanJsonResponse(responseText));
     normalizeLinkedPeriods(parsedJson);
