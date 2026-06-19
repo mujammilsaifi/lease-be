@@ -886,7 +886,7 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
     const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MTc4ODk0NywiZXhwIjoxNzgxODc1MzQ3fQ.M59ni4Mj6iEnHCAGfkXoMeKyGiHHyRHwR5GRwtbZ7Mc";
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MTg3NzIzNywiZXhwIjoxNzgxOTYzNjM3fQ.mkXXSnW0dVGuMes1eNYW5fCYo3rJJDj91WwiIIsHMec";
     const apiUrl = "https://schedule-iii-dev.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {
