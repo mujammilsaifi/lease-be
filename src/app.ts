@@ -19,6 +19,7 @@ const MONGO_URI = process.env.MONGODB_URL as string;
 // ---------------------------
 import leaseRoutes from "./routes/lease/leaseRoutes";
 import sendMailRoute from "./routes/mail-route/mail.route";
+import agreementIntelligenceRoutes from "./routes/agreement-intelligence/agreementIntelligenceRoutes";
 
 // ---------------------------
 // Database Connection
@@ -57,6 +58,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/v1", leaseRoutes);
+app.use("/api/v1/agreement-intelligence", agreementIntelligenceRoutes);
 app.use("/api/mail", sendMailRoute);
 
 // Optional: Health check route

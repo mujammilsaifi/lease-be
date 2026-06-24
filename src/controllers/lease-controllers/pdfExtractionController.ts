@@ -339,6 +339,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
       typeof parsedJson.confidence === "number" ? parsedJson.confidence : 1.0;
     parsedJson.requiresManualReview = confidence < 0.7;
 
+    const agreementId = "AGR-" + Date.now();
+    parsedJson.agreementId = agreementId;
+
     return res.status(200).json(parsedJson);
   } catch (error: any) {
     console.error("Error extracting lease data from PDF:", error);
