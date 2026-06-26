@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import fs from "fs";
+import { emitProgress } from "./extractProgressController";
 
-async function performOCR(filePath: string): Promise<string> {
+async function performOCR(filePath: string, trackingId?: string): Promise<string> {
   console.log("OCR Triggered for file:", filePath);
   let parser;
   try {
@@ -35,6 +36,16 @@ async function performOCR(filePath: string): Promise<string> {
       console.log(
         `Performing OCR on page ${page.pageNumber}/${screenshots.pages.length}...`,
       );
+      if (trackingId) {
+        const percentage = 20 + Math.floor((page.pageNumber / screenshots.pages.length) * 50);
+        emitProgress(trackingId, {
+          stage: "ocr",
+          percentage,
+          message: `Processing page ${page.pageNumber} of ${screenshots.pages.length}...`,
+          currentPage: page.pageNumber,
+          totalPages: screenshots.pages.length
+        });
+      }
       const {
         data: { text },
       } = await worker.recognize(Buffer.from(page.data));
@@ -158,6 +169,11 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
 
     const fileBuffer = fs.readFileSync(req.file.path);
+    const trackingId = req.body.trackingId;
+
+    if (trackingId) {
+      emitProgress(trackingId, { stage: "extracting", percentage: 10, message: "Extracting text from document..." });
+    }
 
     // 1. Try digital text extraction
     let pdfData;
@@ -184,7 +200,14 @@ export const extractPdfController = async (req: Request, res: Response) => {
     
     if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
       console.log(`Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(avgCharsPerPage)} chars/page). Triggering OCR...`);
-      extractedText = await performOCR(req.file.path);
+      if (trackingId) {
+        emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Scanned document detected. Starting OCR..." });
+      }
+      extractedText = await performOCR(req.file.path, trackingId);
+    } else {
+      if (trackingId) {
+        emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Text detected successfully." });
+      }
     }
 
     if (!extractedText.trim()) {
@@ -314,6 +337,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
     console.log(
       `Analyzing lease text (${processedText.length} characters) with Gemini model ${geminiModel}...`,
     );
+    if (trackingId) {
+      emitProgress(trackingId, { stage: "ai-analysis", percentage: 70, message: "Understanding lease agreement..." });
+    }
     const { text: leaseAnalysis, costInr: cost1 } = await callGemini(
       geminiApiKey,
       geminiModel,
@@ -321,6 +347,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
     );
 
     console.log("Converting lease analysis into required JSON schema...");
+    if (trackingId) {
+      emitProgress(trackingId, { stage: "structuring", percentage: 90, message: "Organizing extracted data..." });
+    }
     const { text: responseText, costInr: cost2 } = await callGemini(
       geminiApiKey,
       geminiModel,
@@ -341,6 +370,11 @@ export const extractPdfController = async (req: Request, res: Response) => {
 
     const agreementId = "AGR-" + Date.now();
     parsedJson.agreementId = agreementId;
+    parsedJson.rawText = processedText;
+
+    if (trackingId) {
+      emitProgress(trackingId, { stage: "complete", percentage: 100, message: "Lease agreement analysis completed successfully." });
+    }
 
     return res.status(200).json(parsedJson);
   } catch (error: any) {

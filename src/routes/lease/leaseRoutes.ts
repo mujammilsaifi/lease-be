@@ -28,7 +28,10 @@ import {
 } from "../../controllers/lease-controllers/leaseCalculationCacheController";
 const router = express.Router();
 
+import { extractProgressController } from "../../controllers/lease-controllers/extractProgressController";
+
 // Lease routes
+router.get("/lease/extract-progress", extractProgressController);
 router.get("/lease", getLeaseController);
 // Lease routes for movement
 router.get("/lease/movement", getLeaseFormovementController);
