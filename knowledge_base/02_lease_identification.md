@@ -444,3 +444,64 @@ In the given scenario, as Entity X can use the adjacent land for different purpo
 Entity X can derive benefit from each of (i) the turbine plant (including building and underlying land) and (ii) the adjacent plot of land on its own or together with other readily available resources; and
  the use of adjoining land is not highly dependent on or highly related tothe turbine plant and vice versa.
 Accordingly, from the perspective of Entity X, the contract contains two lease components: a lease of the turbine plant and a lease of the adjacent plot of land.
+
+## Step 3: Low-value leases
+
+category: LEASE_IDENTIFICATION
+topic: Low-value leases
+subtopic: Exemption criteria and examples
+priority: 2
+keywords: low value, exemption, laptop, mobile, server, module, office furniture
+
+### Exemption Guidance
+An underlying asset can be of low value only if:
+- (a) the lessee can benefit from use of the underlying asset on its own or together with other resources that are readily available to the lessee; and
+- (b) the underlying asset is not highly dependent on, or highly interrelated with, other assets.
+
+A lease of an underlying asset does not qualify as a lease of a low-value asset if the nature of the asset is such that, when new, the asset is typically not of low value. For example, leases of cars would not qualify as leases of low-value assets because a new car would typically not be of low value.
+
+If a lessee subleases an asset, or expects to sublease an asset, the head lease does not qualify as a lease of a low-value asset.
+
+Examples of low-value underlying assets can include tablet and personal computers, small items of office furniture and telephones.
+
+Based on the above guidance, the following points need to be borne in mind in making an assessment as to whether an underlying asset of a lease is of low value:
+1. Such assessment is performed on an absolute basis and is independent of the size, nature or circumstances of the lessee.
+2. The assessment is based on the value of the asset when new, regardless of the age of the asset that is the subject matter of the lease.
+3. In case the asset that is the subject matter of the lease is subleased, or is expected to be subleased, the head lease does not qualify as a lease of low-value asset.
+Election of exemption for leases of low-value assets is available on a lease-by-lease basis.
+
+### Question 1: FMCG Lease Assessment
+Entity X is in the business of manufacturing and selling fast-moving consumer goods (FMCG) and has entered into the following lease arrangements as lessee:
+- Leases of office buildings and warehouses.
+- Leases of manufacturing plant and machinery.
+- Leases of vehicles such as cars for employees and senior managements and of varying quality, specifications and value.
+- Leases of trucks and vans used for delivery purposes, of varying size and value.
+- Leases of laptop computers, desktop computers and mobile phones for employees.
+- Leases of high-end servers, including many individual modules that increase the storage capacity of those servers. The modules have been added to the mainframe servers over time as Lessee has needed to increase the storage capacity of the servers.
+- Leases of office equipment: (i) office furniture (such as chairs, desks and office partitions); (ii) water dispensers; and (iii) high-capacity multifunction photocopier devices.
+
+Does each of the above assets qualify to be a low value asset and whether Entity X can elect to apply the low-value asset exemption to all of the assets in the contract?
+
+### Response
+Entity X determines that the following leases qualify as leases of low-value assets on the basis that the underlying assets, when new, are individually of low value:
+- (a) Leases of IT equipment (laptops, desktops, mobile phones) for use by individual employees; and
+- (b) Leases of office furniture and water dispensers.
+
+Leases of modules do not qualify as leases of low-value assets. This is because, although an individual module might be an asset of low value, each module is highly interrelated with other parts of the servers. The entity would not lease the modules without leasing the servers.
+Similarly, office buildings, warehouses, manufacturing plant/machinery, vehicles, delivery trucks/vans, high-end servers, and high-capacity multifunction photocopier devices do not qualify as low-value assets because their value when new is typically not low.
+
+Paragraph 6 of Ind AS 116 provides that, if a lessee elects for the exemption from applying the recognition, measurement and presentation requirements as specified in the Standard leases for which the underlying asset is of low value (or for short-term leases), the lessee shall recognise the lease payments associated with those leases as an expense on either a straight-line basis over the lease term or another systematic basis. The lessee shall apply another systematic basis if that basis is more representative of the pattern of the lessee’s benefit.
+Accordingly, Entity X will recognise the lease payments associated with those leases as an expense on either a straight-line basis over the lease term or another systematic basis if that basis is more representative of the pattern of the lessee’s benefit.
+
+### Question 2: Short-term Lease Exemption Class Adoption
+Entity X has entered into lease agreements to lease several items of office equipment. The items of office equipment are all considered to be of the same class as they are of similar nature and use in Entity X’s operation. The lease term of some of the items is 12 months or less, with no renewal option. 
+The lease agreement does not provide any purchase option in respect of the leased asset to Entity X.
+For which of the leases can Entity X exercise the short term lease exemption?
+
+### Response
+Ind AS 116 defines ‘short term lease’ as follows:
+“A lease that, at the commencement date, has a lease term of 12 months or less is a short term lease. A lease that contains a purchase option is not a short-term lease”
+Further, paragraph 8 of Ind AS 116 states as follows:
+“The election for short-term leases shall be made by class of underlying asset to which the right of use relates. A class of underlying asset is a grouping of underlying assets of a similar nature and use in an entity’s operations. The election for leases for which the underlying asset is of low value can be made on a lease-by-lease basis”.
+
+As per the above paragraphs, if Entity X elects to use the short term exemption, it must apply that exemption to all leases of the same class of underlying asset, i.e. office equipment leases with terms of 12 months or less. Further, once Entity X adopts a policy of classifying such leases as short-term, all future leases of office equipment with a lease term of 12 months or less will be accounted for as short term leases. Any change in that accounting policy will be made only in accordance with Ind AS 8, Accounting Policies, Changes in Accounting Estimates and Errors. However, Entity X will have the option to elect whether or not to apply the exemption to leases of any other class of assets such as machinery.

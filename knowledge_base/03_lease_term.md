@@ -143,6 +143,24 @@ Since lease term exceeds 12 months:
 ❌ Not a short-term lease
 ROU asset and lease liability must be recognized.
 
+Example 3 – Repeatedly Renewed 11-Month Leases
+Scenario:
+Several years back, Entity X (lessee) entered into a lease agreement to take on lease an office building from Entity Y (lessor) for a period of eleven months with no renewal terms. Since then, the contract has been renewed (by entering into a fresh lease agreement) by mutual consent of the parties for a further period of eleven months at a time at the expiry of its current term.
+On expiry of the previous lease agreement, a fresh lease agreement is entered into on April 15, 2026. Based on historical experience, it is considered likely that the contract will be renewed for another eleven months at the expiry of its current term. The lease agreement does not provide any purchase option in respect of the leased asset to the lessee.
+What is the lease term?
+
+Analysis:
+In determining the lease term (and therefore, in determining whether a lease is a short-term lease), only the enforceable rights of the lessee to renew or extend the lease beyond the non-cancellable period are taken into consideration. 
+- Where a lease agreement grants the lessee a right (an option) to renew or extend the lease beyond the non-cancellable period without the consent of the lessor, the lessee has the right to use the asset beyond the non-cancellable period. The period covered by the lessee’s option to renew is included in the lease term if the lessee is reasonably certain to exercise that option.
+- In contrast, where a lease agreement can be renewed or extended by the lessee beyond the non-cancellable period only with the consent of the lessor, the lessee does not have the right to use the asset beyond the non-cancellable period. By definition, there is no contract beyond the non-cancellable period if there are no enforceable rights and obligations existing between the lessee and lessor beyond that term.
+
+Therefore, where a lease agreement is entered into for a period of 12 months or less and does not grant a renewal or extension option to the lessee, it qualifies as a short-term lease within the meaning of the standard (provided it also does not grant a purchase option). This is so even if there is a past practice of the lease being renewed upon expiry for a further period of 12 months or less at a time with the mutual consent of the lessee and the lessor.
+
+Conclusion:
+In the given case, the non-cancellable period of the lease is eleven months and there is no option to extend the lease. Although, in the past, Entity X and Entity Y have entered into a fresh contract at the end of every 11th month, Entity X does not have the right to control the asset beyond the lease term of eleven months. Therefore, the lease term for the contract is eleven months and Entity X is entitled to avail the exemption for short-term lease contracts.
+
+
+
 
 Table 6:
 Component | Years
