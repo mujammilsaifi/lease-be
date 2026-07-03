@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { performance } from "perf_hooks";
 import { syncKnowledgeBase, processRAGQuery } from "../services/knowledge";
-import { callGemini } from "../controllers/agreement-intelligence/geminiService";
+import { callGemini, cleanJsonResponse } from "../controllers/agreement-intelligence/geminiService";
 
 dotenv.config();
 
@@ -115,7 +115,7 @@ async function getInitialExtractedData(rawText: string): Promise<any> {
 
   const { text } = await callGemini(API_KEY, MODEL, schemaPrompt, true);
   // Clean JSON response
-  const cleanJsonText = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+  const cleanJsonText = cleanJsonResponse(text);
   return JSON.parse(cleanJsonText);
 }
 
@@ -190,7 +190,7 @@ async function runEndToEndTest() {
 
       // Call Gemini with compiled RAG context
       const { text: responseText } = await callGemini(API_KEY, MODEL, brainResult.prompt, true);
-      const cleanJson = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+      const cleanJson = cleanJsonResponse(responseText);
       const parsedResponse = JSON.parse(cleanJson);
 
       const queryEnd = performance.now();

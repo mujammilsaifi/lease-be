@@ -49,15 +49,57 @@ export async function callGemini(
   return { text: responseText.trim(), costInr: finalCostInr };
 }
 
+
+export function sanitizeJsonString(str: string): string {
+  let inString = false;
+  let escaped = false;
+  let result = "";
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+
+    if (char === '"' && !escaped) {
+      inString = !inString;
+      result += char;
+    } else if (inString) {
+      if (char === '\\' && !escaped) {
+        escaped = true;
+        result += char;
+      } else {
+        if (escaped) {
+          escaped = false;
+          result += char;
+        } else if (char === '\n') {
+          result += '\\n';
+        } else if (char === '\r') {
+          result += '\\r';
+        } else if (char === '\t') {
+          result += '\\t';
+        } else if (char.charCodeAt(0) < 32) {
+          result += '\\u' + ('0000' + char.charCodeAt(0).toString(16)).slice(-4);
+        } else {
+          result += char;
+        }
+      }
+    } else {
+      result += char;
+      if (escaped) {
+        escaped = false;
+      }
+    }
+  }
+  return result;
+}
+
 export function cleanJsonResponse(responseText: string): string {
   let cleanedText = responseText.trim();
-  if (cleanedText.startsWith("\`\`\`json")) {
+  if (cleanedText.startsWith("```json")) {
     cleanedText = cleanedText.substring(7);
-  } else if (cleanedText.startsWith("\`\`\`")) {
+  } else if (cleanedText.startsWith("```")) {
     cleanedText = cleanedText.substring(3);
   }
-  if (cleanedText.endsWith("\`\`\`")) {
+  if (cleanedText.endsWith("```")) {
     cleanedText = cleanedText.substring(0, cleanedText.length - 3);
   }
-  return cleanedText.trim();
+  return sanitizeJsonString(cleanedText.trim());
 }

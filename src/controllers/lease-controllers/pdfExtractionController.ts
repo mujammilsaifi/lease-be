@@ -151,67 +151,104 @@ function normalizeLinkedPeriods(parsedJson: any) {
   }
 }
 
+// Supported MIME types for upload
+const SUPPORTED_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+async function extractTextFromWord(filePath: string): Promise<string> {
+  const mammoth = await import("mammoth");
+  const result = await mammoth.extractRawText({ path: filePath });
+  return result.value || "";
+}
+
 export const extractPdfController = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: "No PDF file uploaded" });
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // MIME Validation
-    if (req.file.mimetype !== "application/pdf") {
-      return res.status(400).json({ error: "Uploaded file is not a PDF" });
+    // MIME Validation — accept PDF and Word documents
+    const fileMime = req.file.mimetype;
+    const fileExt = req.file.originalname?.split(".").pop()?.toLowerCase() || "";
+    const isValidMime = SUPPORTED_MIME_TYPES.includes(fileMime);
+    const isValidExt = ["pdf", "doc", "docx"].includes(fileExt);
+
+    if (!isValidMime && !isValidExt) {
+      return res.status(400).json({ error: "Unsupported file type. Please upload a PDF or Word document (.pdf, .doc, .docx)." });
     }
 
     // Size Validation (15MB limit)
     const MAX_SIZE = 15 * 1024 * 1024;
     if (req.file.size > MAX_SIZE) {
-      return res.status(400).json({ error: "PDF file exceeds 15MB limit" });
+      return res.status(400).json({ error: "File exceeds 15MB limit" });
     }
 
     const fileBuffer = fs.readFileSync(req.file.path);
     const trackingId = req.body.trackingId;
+    const isPdf = fileMime === "application/pdf" || fileExt === "pdf";
+    const isWord = !isPdf; // If not PDF, treat as Word
 
     if (trackingId) {
       emitProgress(trackingId, { stage: "extracting", percentage: 10, message: "Extracting text from document..." });
     }
 
-    // 1. Try digital text extraction
-    let pdfData;
-    let parser;
-    try {
-      const { PDFParse } = await import("pdf-parse");
-      parser = new PDFParse({ data: fileBuffer });
-      pdfData = await parser.getText();
-    } catch (parseErr: any) {
-      throw new Error(`Failed to parse digital PDF: ${parseErr.message}`);
-    } finally {
-      if (parser) {
-        try {
-          await parser.destroy();
-        } catch {}
-      }
-    }
+    let extractedText = "";
 
-    let extractedText = pdfData.text || "";
-
-    // 2. Check text threshold for scanned PDF (heuristic: avg chars per page or total chars)
-    const numPages = pdfData.total || 1;
-    const avgCharsPerPage = extractedText.trim().length / numPages;
-    
-    if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
-      console.log(`Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(avgCharsPerPage)} chars/page). Triggering OCR...`);
-      if (trackingId) {
-        emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Scanned document detected. Starting OCR..." });
+    if (isPdf) {
+      // PDF text extraction pipeline
+      let pdfData;
+      let parser;
+      try {
+        const { PDFParse } = await import("pdf-parse");
+        parser = new PDFParse({ data: fileBuffer });
+        pdfData = await parser.getText();
+      } catch (parseErr: any) {
+        throw new Error(`Failed to parse digital PDF: ${parseErr.message}`);
+      } finally {
+        if (parser) {
+          try {
+            await parser.destroy();
+          } catch {}
+        }
       }
-      extractedText = await performOCR(req.file.path, trackingId);
+
+      extractedText = pdfData.text || "";
+
+      // Check text threshold for scanned PDF (heuristic: avg chars per page or total chars)
+      const numPages = pdfData.total || 1;
+      const avgCharsPerPage = extractedText.trim().length / numPages;
+
+      if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
+        console.log(`Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(avgCharsPerPage)} chars/page). Triggering OCR...`);
+        if (trackingId) {
+          emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Scanned document detected. Starting OCR..." });
+        }
+        extractedText = await performOCR(req.file.path, trackingId);
+      } else {
+        if (trackingId) {
+          emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Text detected successfully." });
+        }
+      }
     } else {
+      // Word document text extraction pipeline
       if (trackingId) {
-        emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Text detected successfully." });
+        emitProgress(trackingId, { stage: "quality_check", percentage: 15, message: "Extracting text from Word document..." });
+      }
+      try {
+        extractedText = await extractTextFromWord(req.file.path);
+      } catch (wordErr: any) {
+        throw new Error(`Failed to extract text from Word document: ${wordErr.message}`);
+      }
+      if (trackingId) {
+        emitProgress(trackingId, { stage: "quality_check", percentage: 20, message: "Text extracted from Word document." });
       }
     }
 
     if (!extractedText.trim()) {
-      throw new Error("No text content could be extracted from this PDF.");
+      throw new Error("No text content could be extracted from this document.");
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -378,9 +415,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
 
     return res.status(200).json(parsedJson);
   } catch (error: any) {
-    console.error("Error extracting lease data from PDF:", error);
+    console.error("Error extracting lease data from document:", error);
     return res.status(500).json({
-      error: "Error processing the PDF. Please check backend logs.",
+      error: "Error processing the document. Please check backend logs.",
       details: error.message,
     });
   } finally {
