@@ -1,0 +1,71 @@
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface ILeaseAssessmentQuestion {
+  questionId: string; // Q1 to Q9
+  title: string;
+  status: "automated" | "confirmed" | "pending";
+  answer: string | null;
+  confidence: number;
+  explanation: string;
+  promptText?: string;
+  options?: string[];
+}
+
+export interface ILeaseAssessment extends Document {
+  agreementId: string; // AGR-...
+  fileName: string;
+  rawText: string;
+  questions: ILeaseAssessmentQuestion[];
+  recommendation: "Lease" | "Service Contract" | "Exempt Lease" | null;
+  overallConfidence: number;
+  recommendationNarrative: string;
+  status: "in_progress" | "accepted_lease" | "accepted_service" | "overridden";
+  overrideReason?: string;
+  financialDataExtracted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const LeaseAssessmentQuestionSchema = new Schema({
+  questionId: { type: String, required: true },
+  title: { type: String, required: true },
+  status: {
+    type: String,
+    enum: ["automated", "confirmed", "pending"],
+    default: "pending",
+  },
+  answer: { type: String, default: null },
+  confidence: { type: Number, default: 0 },
+  explanation: { type: String, default: "" },
+  promptText: { type: String },
+  options: { type: [String] },
+});
+
+const LeaseAssessmentSchema = new Schema(
+  {
+    agreementId: { type: String, required: true, unique: true, index: true },
+    fileName: { type: String, required: true },
+    rawText: { type: String, required: true },
+    questions: { type: [LeaseAssessmentQuestionSchema], default: [] },
+    recommendation: {
+      type: String,
+      enum: ["Lease", "Service Contract", "Exempt Lease", null],
+      default: null,
+    },
+    overallConfidence: { type: Number, default: 0 },
+    recommendationNarrative: { type: String, default: "" },
+    status: {
+      type: String,
+      enum: ["in_progress", "accepted_lease", "accepted_service", "overridden"],
+      default: "in_progress",
+    },
+    overrideReason: { type: String },
+    financialDataExtracted: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model<ILeaseAssessment>(
+  "LeaseAssessment",
+  LeaseAssessmentSchema
+);

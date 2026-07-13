@@ -4,7 +4,7 @@ import { processRAGQuery } from "../../services/knowledge";
 
 export const chatController = async (req: Request, res: Response) => {
   try {
-    const { message, extractedData, rawText, history } = req.body;
+    const { message, extractedData, rawText, history, contextType } = req.body;
 
     if (!message || !extractedData) {
       return res.status(400).json({ error: "message and extractedData are required" });
@@ -23,7 +23,8 @@ export const chatController = async (req: Request, res: Response) => {
       history || [],
       rawText || "",
       extractedData,
-      geminiApiKey
+      geminiApiKey,
+      contextType || "financial-data"
     );
 
     // 2. Call Gemini model with the synthesized retrieval prompt

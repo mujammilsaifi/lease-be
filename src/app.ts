@@ -79,22 +79,29 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Start Server
 // ---------------------------
 connectDB().then(async () => {
-  // Sync RAG Knowledge Base on startup
+  app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+  });
+
+  // Sync RAG Knowledge Base in the background without blocking the startup/listening
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       const { syncKnowledgeBase } = await import("./services/knowledge");
-      console.log("🔄 Syncing Knowledge Base on startup...");
-      await syncKnowledgeBase(apiKey);
+      console.log("🔄 Syncing Knowledge Base in background...");
+      // Unawaited background promise chain
+      syncKnowledgeBase(apiKey)
+        .then(() => {
+          console.log("✅ Knowledge Base sync completed successfully.");
+        })
+        .catch((err) => {
+          console.error("❌ Failed to index Knowledge Base on startup:", err);
+        });
     } else {
       console.warn("⚠️ GEMINI_API_KEY is not defined. Skipping startup RAG indexing.");
     }
   } catch (err) {
-    console.error("❌ Failed to index Knowledge Base on startup:", err);
+    console.error("❌ Failed to initiate Knowledge Base sync on startup:", err);
   }
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-  });
 });
 

@@ -27,7 +27,8 @@ export async function processRAGQuery(
   history: ChatMessage[],
   rawText: string,
   extractedData: any,
-  apiKey: string
+  apiKey: string,
+  contextType: "assessment" | "financial-data" = "financial-data"
 ): Promise<BrainResult> {
   // 1. Auto-index baseline chunks if the database is empty
   const count = await KnowledgeChunk.countDocuments();
@@ -57,7 +58,7 @@ export async function processRAGQuery(
   const context = assembleContext(rerankedChunks, reasoning);
 
   // 7. Generate final master prompt
-  const prompt = buildMasterPrompt(query, rawText, extractedData, context);
+  const prompt = buildMasterPrompt(query, rawText, extractedData, context, contextType);
 
   return {
     prompt,

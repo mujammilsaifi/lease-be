@@ -17,3 +17,8 @@ A lease extraction must have `requiresManualReview: true` if:
 2. The commencement date or expiry date is ambiguous or cannot be extracted.
 3. The discount rate is missing or cannot be inferred.
 4. The rent amount is missing or cannot be extracted.
+
+## Variable Lease Payment Rule (IND AS 116 Applicability)
+1. If the agreement specifies variable lease payments and no minimum guaranteed lease payment or in-substance fixed lease payments can be identified:
+   - Do NOT extract a rent amount (set it to null/0).
+   - In the qualitative assessment narrative, state: `"since lease liability can not be calculated lease payments are variable and does not include any in-substance fixed lease payments therefore , IND AS 116 will not be applicable on the agreement."`
