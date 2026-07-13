@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
-import LeaseAssessment, { ILeaseAssessmentQuestion } from "../../models/leaseAssessment.model";
+import LeaseAssessment, {
+  ILeaseAssessmentQuestion,
+} from "../../models/leaseAssessment.model";
 import { getRequiredFilesForIntents } from "../../services/knowledge/companyRuleEngine";
 import { retrieveScoredChunks } from "../../services/knowledge/retrievalEngine";
 import { rerankCandidates } from "../../services/knowledge/reranker";
@@ -7,8 +9,10 @@ import { assembleContext } from "../../services/knowledge/contextAssembler";
 import { callGemini, cleanJsonResponse } from "./geminiService";
 import { performFinancialExtractionDirect } from "../lease-controllers/pdfExtractionController";
 
-// Local helper to compute IND AS 116 recommendation as a deterministic fallback
-export function computeRecommendation(questions: ILeaseAssessmentQuestion[]): {
+// Deterministic Backend logical matrix for Ind AS 116 recommendations
+export function computeFinalClassification(
+  questions: ILeaseAssessmentQuestion[],
+): {
   recommendation: "Lease" | "Service Contract" | "Exempt Lease";
   recommendationNarrative: string;
 } {
@@ -21,51 +25,212 @@ export function computeRecommendation(questions: ILeaseAssessmentQuestion[]): {
   const q4 = qMap.get("Q4");
   const q6 = qMap.get("Q6");
   const q7 = qMap.get("Q7");
+  const q9 = qMap.get("Q9");
 
-  if (q1 === "No" || q3 === "No" || q4 === "No" || q2 === "Yes") {
+  // 1. Variable-only payment check (Company Policy Override)
+  if (q9 === "Variable Only" || q9 === "Not Satisfied" || q9 === "No" || q9 === "Variable Payments") {
     return {
       recommendation: "Service Contract",
-      recommendationNarrative:
-        "The agreement is classified as a Service Contract. One or more mandatory criteria for lease identification under Ind AS 116 are not met: either there is no identified asset, the supplier holds substantive substitution rights, or the customer does not have control over directing the use or obtaining economic benefits.",
+      recommendationNarrative: [
+        "### Executive Summary",
+        "",
+        "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
+        "",
+        "**Reason:**",
+        "The agreement specifies variable-only payments based on usage or output with no minimum guaranteed or in-substance fixed lease payments.",
+        "",
+        "**Lease accounting under Ind AS 116 is therefore not applicable.**",
+        "",
+        "### Final Opinion",
+        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**."
+      ].join("\n"),
     };
   }
 
+  // 2. Core Lease Identification Criteria Check
+  if (q1 === "No" || q3 === "No" || q4 === "No" || q2 === "Yes") {
+    let reason = "One or more mandatory qualitative criteria for lease identification under Ind AS 116 are not met.";
+    if (q2 === "Yes" || q1 === "No") {
+      reason = "Although the agreement specifies a particular unit or space, the Lessor retains a substantive right to substitute the asset throughout the contract term. Accordingly, the Lessee does not obtain the right to use an identified asset.";
+    } else if (q3 === "No") {
+      reason = "The Lessee does not obtain substantially all economic benefits from use of the identified asset.";
+    } else if (q4 === "No") {
+      reason = "The Lessee does not hold control over directing the use of the identified asset.";
+    }
+
+    return {
+      recommendation: "Service Contract",
+      recommendationNarrative: [
+        "### Executive Summary",
+        "",
+        "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
+        "",
+        "**Reason:**",
+        reason,
+        "",
+        "**Lease accounting under Ind AS 116 is therefore not applicable.**",
+        "",
+        "### Final Opinion",
+        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**."
+      ].join("\n"),
+    };
+  }
+
+  // 3. Low-Value Exemption Check
   if (q6 === "Yes") {
     return {
       recommendation: "Exempt Lease",
-      recommendationNarrative:
-        "The agreement contains a lease, but it qualifies for the Low-Value Exemption under Ind AS 116 (underlying value < ₹3,00,000). The entity can opt out of capitalization.",
+      recommendationNarrative: [
+        "### Executive Summary",
+        "",
+        "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
+        "",
+        "**Reason:**",
+        "The lease qualifies for the Low-Value Exemption (underlying value < ₹3,00,000 / $5,000).",
+        "",
+        "### Final Opinion",
+        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**."
+      ].join("\n"),
     };
   }
 
+  // 4. Short-Term Exemption Check
   if (q7 === "Yes") {
     return {
       recommendation: "Exempt Lease",
-      recommendationNarrative:
-        "The agreement contains a lease, but it qualifies for the Short-Term Exemption under Ind AS 116 (lease term of 12 months or less). The entity can opt out of capitalization.",
+      recommendationNarrative: [
+        "### Executive Summary",
+        "",
+        "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
+        "",
+        "**Reason:**",
+        "The lease qualifies for the Short-Term Exemption (lease term of 12 months or less).",
+        "",
+        "### Final Opinion",
+        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**."
+      ].join("\n"),
     };
   }
 
-  if (q1 === "Yes" && q2 === "No" && q3 === "Yes" && q4 === "Yes") {
-    return {
-      recommendation: "Lease",
-      recommendationNarrative:
-        "The agreement satisfies all lease identification criteria under Ind AS 116: there is an identified asset, no substantive substitution rights, and the customer obtains substantially all economic benefits and directs the asset's use. Fixed or in-substance fixed lease payments are present.",
-    };
-  }
-
+  // 5. Standard Lease Conclusion
   return {
-    recommendation: "Service Contract",
-    recommendationNarrative:
-      "Based on current answers, the agreement does not satisfy all criteria required for capitalization. Recommended classification is Service Contract.",
+    recommendation: "Lease",
+    recommendationNarrative: [
+      "### Executive Summary",
+      "",
+      "**Conclusion:** The arrangement **contains a lease** under Ind AS 116.",
+      "",
+      "**Reason:**",
+      "The agreement satisfies all lease identification criteria: there is an identified asset, no substantive supplier substitution rights, and the customer obtains substantially all economic benefits and directs the asset's use.",
+      "",
+      "### Final Opinion",
+      "The Lessee **must recognize a Right-of-Use Asset and a Lease Liability** at commencement under Ind AS 116."
+    ].join("\n"),
   };
+}
+
+// Transformation Layer: Converts Internal Assessment Matrix and Evidence Matrix into Q1-Q9 layout
+export function transformToQ1Q9Schema(
+  assessmentMatrix: any[],
+  evidenceMatrix: any[],
+): ILeaseAssessmentQuestion[] {
+  const criterionMap: { [key: string]: string } = {
+    "Identified Asset": "Q1",
+    "Substitution Rights": "Q2",
+    "Economic Benefits": "Q3",
+    "Right to Direct Use": "Q4",
+    "Separate Components": "Q5",
+    "Low Value Exemption": "Q6",
+    "Short-Term Exemption": "Q7",
+    "Lease Term": "Q8",
+    "Lease Payments": "Q9",
+  };
+
+  const evidenceMap = new Map<string, any>(
+    (evidenceMatrix || []).map((e) => [e.criterion, e]),
+  );
+
+  return (assessmentMatrix || []).map((c) => {
+    const qId = criterionMap[c.criterion] || "Q1";
+    const evidence = evidenceMap.get(c.criterion);
+
+    const isPending =
+      c.requiresManagement === true ||
+      c.decision === "Insufficient Evidence" ||
+      (evidence && evidence.confidence < 1.0);
+
+    let answerText: string | null = null;
+    if (!isPending) {
+      if (qId === "Q8" || qId === "Q9") {
+        answerText = c.decision;
+      } else {
+        answerText = c.decision === "Satisfied" ? "Yes" : "No";
+      }
+    }
+
+    const ruleId = evidence?.kbRuleId || "N/A";
+    const ruleTitle = evidence?.kbRuleTitle || "N/A";
+    const evidenceText = evidence?.agreementEvidence || "N/A";
+    const reasoningText = c.reasoning || "";
+
+    let promptText = `Please confirm the parameter for ${c.criterion}.`;
+    let options = ["Yes", "No"];
+
+    if (isPending && c.managementQuestion) {
+      const qObj = c.managementQuestion;
+      promptText = qObj.questionText || promptText;
+      options = qObj.options || options;
+
+      const whyPart = qObj.whyAsked ? `\n\nWhy Asked: ${qObj.whyAsked}` : "";
+      const missingPart =
+        qObj.missingEvidence && qObj.missingEvidence.length > 0
+          ? `\n\nMissing Evidence: ${qObj.missingEvidence.join(", ")}`
+          : "";
+      c.reasoning = (c.reasoning || "") + whyPart + missingPart;
+    }
+
+    // Clean professional template-driven formatting for observations and citations
+    const refText = ruleId !== "N/A" ? `${ruleTitle} (${ruleId})` : ruleTitle;
+    const explanation = [
+      `**Ind AS Reference:**\n${refText}`,
+      "",
+      `**Evidence:**\n${evidenceText}`,
+      "",
+      `**Assessment:**\n${reasoningText}`,
+      "",
+      `**Conclusion:**\n${
+        isPending
+          ? "Pending management confirmation."
+          : c.decision === "Satisfied"
+            ? "Criterion satisfied."
+            : "Criterion not satisfied."
+      }`
+    ].join("\n");
+
+    return {
+      questionId: qId,
+      title: c.criterion,
+      status: isPending ? "pending" : "automated",
+      answer: answerText,
+      confidence:
+        evidence?.confidence !== undefined
+          ? evidence.confidence
+          : isPending
+            ? 0.5
+            : 1.0,
+      explanation,
+      promptText,
+      options,
+    } as ILeaseAssessmentQuestion;
+  });
 }
 
 // AI-driven recommendation and narrative computation using RAG guidelines
 export async function reevaluateRecommendationWithAI(
   questions: ILeaseAssessmentQuestion[],
+  rawText: string,
   geminiApiKey: string,
-  geminiModel: string
+  geminiModel: string,
 ): Promise<{
   recommendation: "Lease" | "Service Contract" | "Exempt Lease";
   recommendationNarrative: string;
@@ -77,26 +242,26 @@ export async function reevaluateRecommendationWithAI(
       "Evaluate qualitative criteria to categorize as Lease or Service Contract under Ind AS 116",
       categories,
       requiredFiles,
-      geminiApiKey
+      geminiApiKey,
     );
-    const { selected: rerankedChunks } = rerankCandidates(scoredChunks, requiredFiles);
+    const { selected: rerankedChunks } = rerankCandidates(
+      scoredChunks,
+      requiredFiles,
+    );
     const ragContext = assembleContext(rerankedChunks, []);
 
     const prompt = `
-      You are an expert lease accounting auditor under Ind AS 116.
-      Based on the following answers to the 9 qualitative lease criteria questions, determine the overall recommendation and write a narrative explanation under Ind AS 116 rules.
+      You are a Chartered Accountant (CA) auditing lease arrangements under Ind AS 116.
+      Review the original agreement text, the RAG compliance rules, and the current qualitative assessment answers (some confirmed by management).
+      Your task is to write a professional CA-grade narrative explanation of the classification decision.
 
       CRITICAL COMPLIANCE RULES (RAG Context):
       ${ragContext}
 
-      CRITICAL ACCOUNTING INTERPRETATION GUIDELINES FOR Q2 (SUBSTITUTION RIGHTS):
-      - A supplier relocation right (e.g., Clause 5 allowing the lessor to relocate the lessee/tenant to another retail space or office suite in a shopping centre/building) is NOT a substantive substitution right (meaning Q2 should be "No") if:
-        1. The lessor/supplier bears all relocation costs.
-        2. The substitute space must be substantially similar.
-        3. It is not likely that a major new tenant or higher-rate opportunity will arise at contract inception to make relocation economically beneficial for the supplier.
-        Protective or strategic optimization relocation rights are NOT substantive. You must classify such rights as Q2 = "No", which means an identified asset (Q1 = "Yes") exists.
+      Original Lease Text:
+      ${rawText || "[Original lease text not available]"}
 
-      Current Questions and Answers:
+      Current Answers to Qualitative Questions:
       ${JSON.stringify(
         questions.map((q) => ({
           questionId: q.questionId,
@@ -105,41 +270,62 @@ export async function reevaluateRecommendationWithAI(
           explanation: q.explanation,
         })),
         null,
-        2
+        2,
       )}
 
-      Identify:
-      1. recommended classification: must be exactly "Lease", "Service Contract", or "Exempt Lease".
-         - "Lease": If identified asset exists, no substantive substitution rights, customer directs use, and gets economic benefits.
-         - "Exempt Lease": If lease criteria are met, but Low Value or Short Term exemption applies under company policies.
-         - "Service Contract": If any core lease identification criteria (asset, control, benefits) fails.
-      2. narrative explanation of why this classification was recommended, citing any rules from the context.
+      CRITICAL AUDITING & WRITING STYLE INSTRUCTIONS:
+      - You must write in the tone and language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO or corporate finance team.
+      - DO NOT use generic AI filler words or transition phrases (e.g., "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover...").
+      - DO NOT use textbook definitions of Ind AS 116 criteria (e.g. avoid repeating "substantive substitution rights", "identified asset", "economic benefits" multiple times). State only observations of fact and direct accounting conclusions.
+      - Keep the explanation extremely brief, concise, and direct. Citing the relevant clauses and standard paragraphs (e.g., Para B14-B19).
+      - Format "recommendationNarrative" exactly like a CA's Final Assessment in Markdown:
+        ### Reason for Classification
+        [Concise paragraph explaining the core reason. Cite the relevant clause and the Ind AS standard paragraph e.g. B14-B19]
+
+        ### Recommendation
+        [Direct, clear statement of whether Right-of-Use Asset or Lease Liability should be recognized under Ind AS 116]
 
       Return your response strictly as a JSON object matching this schema, without any markdown formatting or extra text:
       {
-        "recommendation": "Lease" | "Service Contract" | "Exempt Lease",
-        "recommendationNarrative": "A brief explanation of why this recommendation was reached based on the answers..."
+        "recommendationNarrative": "markdown formatted string as instructed above"
       }
     `;
 
     const { text } = await callGemini(geminiApiKey, geminiModel, prompt, true);
     const result = JSON.parse(cleanJsonResponse(text));
+
+    // Determinstic Backend Matrix calculation
+    const { recommendation, recommendationNarrative: fallbackNarrative } =
+      computeFinalClassification(questions);
+
+    const q9 = questions.find((q) => q.questionId === "Q9")?.answer;
+    const isVariableOnly =
+      q9 === "Variable Only" ||
+      q9 === "Not Satisfied" ||
+      q9 === "No" ||
+      q9 === "Variable Payments";
+
     return {
-      recommendation: result.recommendation || "Service Contract",
-      recommendationNarrative: result.recommendationNarrative || "Re-evaluated recommendation narrative.",
+      recommendation,
+      recommendationNarrative: isVariableOnly
+        ? fallbackNarrative
+        : result.recommendationNarrative || fallbackNarrative,
     };
   } catch (err) {
-    console.warn("[Assessment Engine] AI re-evaluation failed, falling back to rule engine:", err);
-    return computeRecommendation(questions);
+    console.warn(
+      "[Assessment Engine] AI re-evaluation failed, falling back to rule engine:",
+      err,
+    );
+    return computeFinalClassification(questions);
   }
 }
 
-// 1. Core function to start/evaluate assessment on text
+// 1. Core function to start/evaluate assessment on text (v4 Evidence-Based Engine)
 export async function startLeaseAssessment(
   fileName: string,
   rawText: string,
   geminiApiKey: string,
-  geminiModel: string
+  geminiModel: string,
 ) {
   // A. RAG guideline retrieval for lease identification & term
   const categories = ["LEASE_IDENTIFICATION", "LEASE_TERM", "VALIDATION"];
@@ -148,121 +334,150 @@ export async function startLeaseAssessment(
     "Check if agreement is a lease under Ind AS 116, identified asset, term and short term rules",
     categories,
     requiredFiles,
-    geminiApiKey
+    geminiApiKey,
   );
-  const { selected: rerankedChunks } = rerankCandidates(scoredChunks, requiredFiles);
+  const { selected: rerankedChunks } = rerankCandidates(
+    scoredChunks,
+    requiredFiles,
+  );
   const ragContext = assembleContext(rerankedChunks, []);
 
-  // B. Call Gemini with RAG guidelines & Raw text
+  // B. Call Gemini with RAG guidelines & Raw text using the v4 prompt
   const assessmentPrompt = `
-    You are an expert lease accounting auditor under Ind AS 116.
-    Analyze the provided agreement text against the 9 standard criteria for lease assessment under Ind AS 116.
-    
+    You are a Chartered Accountant (CA) auditing lease arrangements under Ind AS 116. Your primary objective is to classify the agreement correctly. You are performing a professional accounting assessment using evidence-based reasoning over the agreement text, retrieved Knowledge Base rules, and company policies.
+
     CRITICAL COMPLIANCE RULES (RAG):
     ${ragContext}
 
-    Evaluate each of the following 9 questions Q1 to Q9:
-    Q1 (Identified Asset): Is there an explicitly or implicitly specified asset?
-    Q2 (Substitution Rights): Does the supplier have a substantive right to substitute the asset? (Yes means supplier can substitute at will, which negates a lease).
-    Q3 (Economic Benefits): Does the customer have the right to obtain substantially all economic benefits from use?
-    Q4 (Right to Direct Use): Does the customer have the right to direct how and for what purpose the asset is used?
-    Q5 (Separate Components): Does the contract contain multiple lease or non-lease components?
-    Q6 (Low Value Exemption): Is the asset value below the low-value threshold (under company rules: < ₹3,00,000 or $5,000)?
-    Q7 (Short-Term Exemption): Is the lease term 12 months or less?
-    Q8 (Lease Term): What is the calculated lease term duration?
-    Q9 (Lease Payments): Are there fixed, in-substance fixed, or variable payments?
+    CRITICAL AUDITING & WRITING STYLE INSTRUCTIONS:
+    - Tone: Write in the language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO.
+    - Style: Be extremely brief, concise, and direct. Citing the relevant clauses and standard paragraphs (e.g., Para B14-B19).
+    - Jargon: DO NOT use generic AI transition phrases (e.g. "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover..."). State only direct contractual observations.
+    - Concise Table Observations: Keep the "reasoning" for each criterion inside the "assessmentMatrix" down to a single brief sentence or short bulleted observation of fact (e.g. "Lessor can relocate Lessee to a comparable space at any time" or "Lessee occupies the unit exclusively for business"). Do not write generic paragraphs or restate Ind AS definitions.
+    - Confidence Scores: Avoid assigning exactly 1.00 (100%) confidence for evaluative criteria (like Identified Asset, Substitution Rights, Control, Economic Benefits). Use values like 0.85 to 0.95 to reflect professional judgement. Only assign 1.00 for verified, explicit numerical or contractual facts (e.g. lease term duration of 20 years or a fixed rent amount).
 
-    CRITICAL ACCOUNTING INTERPRETATION GUIDELINES FOR Q2 (SUBSTITUTION RIGHTS):
-    - A supplier relocation right (e.g., Clause 5 allowing the lessor to relocate the lessee/tenant to another retail space or office suite in a shopping centre/building) is NOT a substantive substitution right (meaning Q2 should be "No") if:
-      1. The lessor/supplier bears all relocation costs.
-      2. The substitute space must be substantially similar.
-      3. It is not likely that a major new tenant or higher-rate opportunity will arise at contract inception to make relocation economically beneficial for the supplier.
-      Protective or strategic optimization relocation rights are NOT substantive. You must classify such rights as Q2 = "No", which means an identified asset (Q1 = "Yes") exists.
+    Your execution steps:
+    1. PHASE 1 (AGREEMENT MODEL): Read the agreement and extract raw document facts (agreementType, lessorName, lesseeName, assetDescription, paymentClause, paymentType, leaseTerm, commencementDate, expiryDate, lockInPeriod, noticePeriod, supplierRelocationClause). Do not perform any accounting classification.
+    2. PHASE 2 (EVIDENCE MATRIX): For each of the 9 required criteria (Identified Asset, Substitution Rights, Economic Benefits, Right to Direct Use, Separate Components, Low Value Exemption, Short-Term Exemption, Lease Term, Lease Payments):
+       - Locate the applicable rule ID, rule title, and rule explanation from the RAG context.
+       - Find the matching clause or evidence in the agreement.
+       - Assign a confidence score (float 0.0 to 1.0) adhering to the confidence guidelines.
+    3. PHASE 3 (ASSESSMENT MATRIX): Evaluate the evidence against the KB rules to determine:
+       - decision: "Satisfied", "Not Satisfied", or "Insufficient Evidence". 
+         * CRITICAL LEASE PAYMENTS RULE: If the agreement payments are completely variable (e.g. rate per unit of electricity supplied, price per actual hour used, parking charge per vehicle) and contain no unavoidable in-substance fixed payments or minimum guarantees, you MUST classify the decision for "Lease Payments" as "Not Satisfied" or "Variable Only". Under Ind AS 116, usage-based variable payments do not qualify as lease payments for capitalization, meaning lease liability cannot be calculated.
+       - reasoning: A very short, direct observation of fact (1 sentence max).
+       - requiresManagement: boolean indicating if evidence is missing or ambiguous.
+       - If requiresManagement is true, construct a managementQuestion object containing:
+         * questionText: precise management clarification prompt.
+         * missingEvidence: array of what parameters are missing from the agreement text.
+         * whyAsked: explanation of why the question is needed.
+         * options: standard confirmation options (typically ["Yes", "No"]).
 
-    For each question Q1 to Q9:
-    1. Determine if the criterion is met. Use Yes, No, or a short string answer (e.g. for Q8 '24 Months', for Q9 'Fixed Payments').
-    2. Provide a clear, brief explanation (one sentence max) of your decision based on the text.
-    3. Calculate a strict numeric confidence score as a float between 0.0 and 1.0 (do NOT output string percentages like "90%"):
-       - If the indicator is explicitly stated or clearly inferable with high certainty, set confidence high (e.g. 0.90 to 1.00).
-       - If the text is completely silent, or highly ambiguous, set confidence low (0.0 to 0.69).
-    4. Formulate a brief, clear Yes/No prompt text for management confirmation only if your confidence score is low (< 0.70).
-
-    LEASE DOCUMENT TEXT TO ANALYZE:
-    ${rawText}
-
-    Return your response strictly as a JSON object matching this schema, without any markdown fences, comments, or extra text:
+    Return your response strictly as a JSON object matching this schema, without markdown backticks:
     {
-      "questions": [
+      "understanding": {
+        "documentFacts": {
+          "agreementType": "string",
+          "lessorName": "string",
+          "lesseeName": "string",
+          "assetDescription": "string",
+          "paymentClause": "string",
+          "paymentType": "string",
+          "leaseTerm": "string",
+          "commencementDate": "string",
+          "expiryDate": "string",
+          "lockInPeriod": "string",
+          "noticePeriod": "string",
+          "supplierRelocationClause": "string"
+        }
+      },
+      "evidenceMatrix": [
         {
-          "questionId": "Q1",
-          "title": "Identified Asset",
-          "answer": "Yes" | "No" | "24 Months" | "Fixed Payments" | null,
-          "confidence": 0.95,
-          "explanation": "Dedicated Solar Power Station specified in Section 1.2.",
-          "promptText": "Does the agreement specify an identified asset?",
-          "options": ["Yes", "No"]
+          "criterion": "Identified Asset" | "Substitution Rights" | "Economic Benefits" | "Right to Direct Use" | "Separate Components" | "Low Value Exemption" | "Short-Term Exemption" | "Lease Term" | "Lease Payments",
+          "kbRuleId": "string",
+          "kbRuleTitle": "string",
+          "agreementEvidence": "string",
+          "confidence": number
         }
       ],
-      "recommendation": "Lease" | "Service Contract" | "Exempt Lease",
-      "recommendationNarrative": "A brief overall explanation of why this classification was recommended based on Ind AS 116 rules."
+      "assessmentMatrix": [
+        {
+          "criterion": "Identified Asset" | "Substitution Rights" | "Economic Benefits" | "Right to Direct Use" | "Separate Components" | "Low Value Exemption" | "Short-Term Exemption" | "Lease Term" | "Lease Payments",
+          "decision": "Satisfied" | "Not Satisfied" | "Insufficient Evidence",
+          "requiresManagement": boolean,
+          "reasoning": "string",
+          "managementQuestion": {
+            "questionText": "string",
+            "missingEvidence": ["string"],
+            "whyAsked": "string",
+            "options": ["string"]
+          }
+        }
+      ],
+      "recommendationNarrative": "A professional, Chartered Accountant (CA) grade audit summary formatted in Markdown. Structure it exactly as:\n\n### Reason for Classification\n[Concise paragraph explaining the core reason. Cite the relevant clause and the Ind AS standard paragraph e.g. B14-B19]\n\n### Recommendation\n[Direct, clear statement of whether Right-of-Use Asset or Lease Liability should be recognized under Ind AS 116]"
     }
+
+    Original Lease Document Text:
+    ${rawText}
   `;
 
-  console.log(`[Assessment Engine] Running assessment for ${fileName}...`);
-  const { text: rawResponse } = await callGemini(geminiApiKey, geminiModel, assessmentPrompt, true);
+  console.log(
+    `[Assessment Engine] Running v4 Evidence-Based assessment for ${fileName}...`,
+  );
+  const { text: rawResponse } = await callGemini(
+    geminiApiKey,
+    geminiModel,
+    assessmentPrompt,
+    true,
+  );
   console.log("DEBUG: Raw assessment response from Gemini:", rawResponse);
   const parsedResponse = JSON.parse(cleanJsonResponse(rawResponse));
 
-  const questions: ILeaseAssessmentQuestion[] = parsedResponse.questions.map((q: any) => {
-    const isLowConfidence = q.confidence < 0.70;
-    return {
-      questionId: q.questionId,
-      title: q.title,
-      status: isLowConfidence ? "pending" : "automated",
-      answer: isLowConfidence ? null : q.answer,
-      confidence: q.confidence,
-      explanation: q.explanation || "",
-      promptText: q.promptText || `Please confirm the parameter for ${q.title}.`,
-      options: q.options || ["Yes", "No"],
-    } as ILeaseAssessmentQuestion;
-  });
+  // C. Map the Evidence and Assessment matrices into the expected Q1-Q9 UI/DB Schema
+  const questions = transformToQ1Q9Schema(
+    parsedResponse.assessmentMatrix,
+    parsedResponse.evidenceMatrix,
+  );
 
-  // Log detailed assessment statistics to the server console
-  const automated = questions.filter((q) => q.status === "automated");
-  const pending = questions.filter((q) => q.status === "pending");
+  // D. Deterministic Backend matrix recommendation classification calculation
+  const { recommendation, recommendationNarrative: fallbackNarrative } =
+    computeFinalClassification(questions);
 
-  console.log(`[Assessment Engine] Qualitative Ind AS 116 Evaluation Complete:`);
-  console.log(`  - Total Indicators: ${questions.length}`);
-  console.log(`  - Resolved Automatically (${automated.length}):`);
-  automated.forEach((q) => {
-    console.log(`    * [${q.questionId}] ${q.title} -> Answer: ${q.answer} (Confidence: ${Math.round(q.confidence * 100)}%)`);
-  });
-  console.log(`  - Pending Confirmation (${pending.length}):`);
-  pending.forEach((q) => {
-    console.log(`    * [${q.questionId}] ${q.title} -> Prompt: "${q.promptText}" (Confidence: ${Math.round(q.confidence * 100)}%)`);
-  });
+  const q9 = questions.find((q) => q.questionId === "Q9")?.answer;
+  const isVariableOnly =
+    q9 === "Variable Only" ||
+    q9 === "Not Satisfied" ||
+    q9 === "No" ||
+    q9 === "Variable Payments";
+
+  const recommendationNarrative = isVariableOnly
+    ? fallbackNarrative
+    : parsedResponse.recommendationNarrative || fallbackNarrative;
 
   const agreementId = "AGR-" + Date.now();
-  const recommendation = parsedResponse.recommendation || "Service Contract";
-  const recommendationNarrative =
-    parsedResponse.recommendationNarrative ||
-    "AI assessment recommended classification.";
 
-  // C. Save the LeaseAssessment session
+  // E. Save the LeaseAssessment session
   const assessmentSession = new LeaseAssessment({
     agreementId,
     fileName,
     rawText,
     questions,
     recommendation,
-    overallConfidence: parsedResponse.overallConfidence || 0.9,
+    overallConfidence: parsedResponse.evidenceMatrix
+      ? parsedResponse.evidenceMatrix.reduce(
+          (acc: number, curr: any) => acc + (curr.confidence || 0),
+          0,
+        ) / parsedResponse.evidenceMatrix.length
+      : 0.9,
     recommendationNarrative,
     status: "in_progress",
     financialDataExtracted: false,
   });
 
   await assessmentSession.save();
-  console.log(`[Assessment Engine] Saved assessment session for ${agreementId}`);
+  console.log(
+    `[Assessment Engine] Saved assessment session for ${agreementId}`,
+  );
 
   return assessmentSession;
 }
@@ -272,7 +487,9 @@ export const assessController = async (req: Request, res: Response) => {
   try {
     const { agreementId, rawText, fileName } = req.body;
     if (!agreementId || !rawText) {
-      return res.status(400).json({ error: "agreementId and rawText are required" });
+      return res
+        .status(400)
+        .json({ error: "agreementId and rawText are required" });
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -284,13 +501,20 @@ export const assessController = async (req: Request, res: Response) => {
     let assessment = await LeaseAssessment.findOne({ agreementId });
     if (!assessment) {
       // Create new
-      assessment = await startLeaseAssessment(fileName || "Agreement", rawText, geminiApiKey, geminiModel);
+      assessment = await startLeaseAssessment(
+        fileName || "Agreement",
+        rawText,
+        geminiApiKey,
+        geminiModel,
+      );
     }
 
     return res.status(200).json(assessment);
   } catch (error: any) {
     console.error("Error in assessController:", error);
-    return res.status(500).json({ error: "Internal server error", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 };
 
@@ -299,18 +523,26 @@ export const confirmController = async (req: Request, res: Response) => {
   try {
     const { agreementId, questionId, value } = req.body;
     if (!agreementId || !questionId || value === undefined) {
-      return res.status(400).json({ error: "agreementId, questionId, and value are required" });
+      return res
+        .status(400)
+        .json({ error: "agreementId, questionId, and value are required" });
     }
 
     const assessment = await LeaseAssessment.findOne({ agreementId });
     if (!assessment) {
-      return res.status(404).json({ error: "Lease assessment session not found" });
+      return res
+        .status(404)
+        .json({ error: "Lease assessment session not found" });
     }
 
     // Update the question
-    const qIndex = assessment.questions.findIndex((q) => q.questionId === questionId);
+    const qIndex = assessment.questions.findIndex(
+      (q) => q.questionId === questionId,
+    );
     if (qIndex === -1) {
-      return res.status(400).json({ error: `Question ${questionId} not found in assessment` });
+      return res
+        .status(400)
+        .json({ error: `Question ${questionId} not found in assessment` });
     }
 
     assessment.questions[qIndex].answer = value;
@@ -321,22 +553,28 @@ export const confirmController = async (req: Request, res: Response) => {
     const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
     // Dynamic AI re-evaluation based on confirmed answer and context
-    const { recommendation, recommendationNarrative } = await reevaluateRecommendationWithAI(
-      assessment.questions,
-      geminiApiKey,
-      geminiModel
-    );
+    const { recommendation, recommendationNarrative } =
+      await reevaluateRecommendationWithAI(
+        assessment.questions,
+        assessment.rawText,
+        geminiApiKey,
+        geminiModel,
+      );
 
     assessment.recommendation = recommendation;
     assessment.recommendationNarrative = recommendationNarrative;
 
     await assessment.save();
-    console.log(`[Assessment Engine] Updated question ${questionId} dynamically for ${agreementId}`);
+    console.log(
+      `[Assessment Engine] Updated question ${questionId} dynamically for ${agreementId}`,
+    );
 
     return res.status(200).json(assessment);
   } catch (error: any) {
     console.error("Error in confirmController:", error);
-    return res.status(500).json({ error: "Internal server error", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 };
 
@@ -345,16 +583,22 @@ export const approveController = async (req: Request, res: Response) => {
   try {
     const { agreementId, status, overrideReason } = req.body;
     if (!agreementId || !status) {
-      return res.status(400).json({ error: "agreementId and status are required" });
+      return res
+        .status(400)
+        .json({ error: "agreementId and status are required" });
     }
 
-    if (!["accepted_lease", "accepted_service", "overridden"].includes(status)) {
+    if (
+      !["accepted_lease", "accepted_service", "overridden"].includes(status)
+    ) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
     const assessment = await LeaseAssessment.findOne({ agreementId });
     if (!assessment) {
-      return res.status(404).json({ error: "Lease assessment session not found" });
+      return res
+        .status(404)
+        .json({ error: "Lease assessment session not found" });
     }
 
     assessment.status = status;
@@ -369,11 +613,13 @@ export const approveController = async (req: Request, res: Response) => {
     }
 
     if (status === "accepted_lease" || status === "overridden") {
-      console.log(`[Assessment Engine] Running financial data extraction for ${agreementId}...`);
+      console.log(
+        `[Assessment Engine] Running financial data extraction for ${agreementId}...`,
+      );
       const financialData = await performFinancialExtractionDirect(
         assessment.rawText,
         geminiApiKey,
-        geminiModel
+        geminiModel,
       );
 
       assessment.financialDataExtracted = true;
@@ -417,7 +663,7 @@ export const approveController = async (req: Request, res: Response) => {
                 <td>${q.status}</td>
                 <td>${q.explanation}</td>
               </tr>
-            `
+            `,
               )
               .join("")}
           </tbody>
@@ -431,6 +677,8 @@ export const approveController = async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     console.error("Error in approveController:", error);
-    return res.status(500).json({ error: "Internal server error", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 };
