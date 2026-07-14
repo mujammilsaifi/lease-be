@@ -33,7 +33,11 @@ ${isAssessment ? "Current Qualitative Assessment State:" : "Currently Extracted 
 ${JSON.stringify(extractedData, null, 2)}
 
 Your task:
-- Address the user's message accurately using the retrieved accounting context and the lease text.
+- Address the user's message accurately using the retrieved RAG context and the lease text.
+- **CRITICAL - NO EXAMPLE LEAKAGE**: Under no circumstance should you mix up illustrative examples mentioned in the RAG guidelines (such as billboards, car parking, or logistics warehouses) with the actual facts of the user's lease agreement. The raw lease text and the current assessment/extracted data are the SOLE sources of truth for the agreement's facts.
+- **Align response with query type**:
+  1. If the user is asking about the agreement, its classification, or its specific details (e.g., "Is it correct that no asset is recognized?", "Why is this a service contract?", "Who is the lessor?"), you MUST answer based on the actual agreement raw text and the "Current Qualitative Assessment State" (respecting the final recommendation and the Q1-Q9 answers).
+  2. If the user is asking about general accounting rules or standard definitions (e.g., "What is the threshold for low value?", "What are substitution rights under Ind AS 116?"), answer based on the retrieved RAG context files.
 - Cite the source files and sections from the retrieved context above in your response text to explain the basis of your answers.
 ${isAssessment ? "- IMPORTANT: Under no circumstance should you ask the user for management confirmation or collect Yes/No answers here. Management confirmations are handled directly by the UI." : "- If the user instructs you to update, correct, or map a field (e.g. 'update rent to 50,000', 'change commencement date to 2025-04-01'), you MUST return the updated fields in the 'updatedFields' array."}
 

@@ -257,6 +257,10 @@ export async function reevaluateRecommendationWithAI(
   recommendationNarrative: string;
 }> {
   try {
+    // Determine the recommendation category and fallback narrative deterministically upfront
+    const { recommendation, recommendationNarrative: fallbackNarrative } =
+      computeFinalClassification(questions);
+
     const categories = ["LEASE_IDENTIFICATION", "LEASE_TERM", "VALIDATION"];
     const requiredFiles = getRequiredFilesForIntents(categories);
     const scoredChunks = await retrieveScoredChunks(
@@ -273,8 +277,7 @@ export async function reevaluateRecommendationWithAI(
 
     const prompt = `
       You are a Chartered Accountant (CA) auditing lease arrangements under Ind AS 116.
-      Review the original agreement text, the RAG compliance rules, and the current qualitative assessment answers (some confirmed by management).
-      Your task is to write a professional CA-grade narrative explanation of the classification decision.
+      Review the original agreement text, the RAG compliance rules, and the final confirmed/answers to the qualitative criteria.
 
       CRITICAL COMPLIANCE RULES (RAG Context):
       ${ragContext}
@@ -293,6 +296,15 @@ export async function reevaluateRecommendationWithAI(
         null,
         2,
       )}
+
+      FINAL DETERMINED CLASSIFICATION: ${recommendation}
+
+      CRITICAL ALIGNMENT INSTRUCTION:
+      Your narrative MUST align perfectly with the FINAL DETERMINED CLASSIFICATION (${recommendation}) and the confirmed answers above.
+      - If a question's answer is "Yes" (or "Satisfied"), treat that criterion as met.
+      - If a question's answer is "No" (or "Not Satisfied"), treat that criterion as NOT met.
+      - For example: If Substitution Rights (Q2) has the answer "No" (or "Not Satisfied"), it means there are NO substantive substitution rights. You must NOT say the landlord has relocation rights in the final narrative.
+      - Detail exactly why the contract is a ${recommendation} based on the specific criteria that failed or succeeded according to the answers.
 
       CRITICAL AUDITING & WRITING STYLE INSTRUCTIONS:
       - You must write in the tone and language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO or corporate finance team.
@@ -314,10 +326,6 @@ export async function reevaluateRecommendationWithAI(
 
     const { text } = await callGemini(geminiApiKey, geminiModel, prompt, true);
     const result = JSON.parse(cleanJsonResponse(text));
-
-    // Determinstic Backend Matrix calculation
-    const { recommendation, recommendationNarrative: fallbackNarrative } =
-      computeFinalClassification(questions);
 
     const q9 = questions.find((q) => q.questionId === "Q9")?.answer;
     const isVariableOnly =
