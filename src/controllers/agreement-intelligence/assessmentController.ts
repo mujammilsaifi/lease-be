@@ -28,7 +28,12 @@ export function computeFinalClassification(
   const q9 = qMap.get("Q9");
 
   // 1. Variable-only payment check (Company Policy Override)
-  if (q9 === "Variable Only" || q9 === "Not Satisfied" || q9 === "No" || q9 === "Variable Payments") {
+  if (
+    q9 === "Variable Only" ||
+    q9 === "Not Satisfied" ||
+    q9 === "No" ||
+    q9 === "Variable Payments"
+  ) {
     return {
       recommendation: "Service Contract",
       recommendationNarrative: [
@@ -42,20 +47,24 @@ export function computeFinalClassification(
         "**Lease accounting under Ind AS 116 is therefore not applicable.**",
         "",
         "### Final Opinion",
-        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**."
+        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
       ].join("\n"),
     };
   }
 
   // 2. Core Lease Identification Criteria Check
   if (q1 === "No" || q3 === "No" || q4 === "No" || q2 === "Yes") {
-    let reason = "One or more mandatory qualitative criteria for lease identification under Ind AS 116 are not met.";
+    let reason =
+      "One or more mandatory qualitative criteria for lease identification under Ind AS 116 are not met.";
     if (q2 === "Yes" || q1 === "No") {
-      reason = "Although the agreement specifies a particular unit or space, the Lessor retains a substantive right to substitute the asset throughout the contract term. Accordingly, the Lessee does not obtain the right to use an identified asset.";
+      reason =
+        "Although the agreement specifies a particular unit or space, the Lessor retains a substantive right to substitute the asset throughout the contract term. Accordingly, the Lessee does not obtain the right to use an identified asset.";
     } else if (q3 === "No") {
-      reason = "The Lessee does not obtain substantially all economic benefits from use of the identified asset.";
+      reason =
+        "The Lessee does not obtain substantially all economic benefits from use of the identified asset.";
     } else if (q4 === "No") {
-      reason = "The Lessee does not hold control over directing the use of the identified asset.";
+      reason =
+        "The Lessee does not hold control over directing the use of the identified asset.";
     }
 
     return {
@@ -71,7 +80,7 @@ export function computeFinalClassification(
         "**Lease accounting under Ind AS 116 is therefore not applicable.**",
         "",
         "### Final Opinion",
-        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**."
+        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
       ].join("\n"),
     };
   }
@@ -89,7 +98,7 @@ export function computeFinalClassification(
         "The lease qualifies for the Low-Value Exemption (underlying value < ₹3,00,000 / $5,000).",
         "",
         "### Final Opinion",
-        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**."
+        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
       ].join("\n"),
     };
   }
@@ -107,7 +116,7 @@ export function computeFinalClassification(
         "The lease qualifies for the Short-Term Exemption (lease term of 12 months or less).",
         "",
         "### Final Opinion",
-        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**."
+        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
       ].join("\n"),
     };
   }
@@ -124,7 +133,7 @@ export function computeFinalClassification(
       "The agreement satisfies all lease identification criteria: there is an identified asset, no substantive supplier substitution rights, and the customer obtains substantially all economic benefits and directs the asset's use.",
       "",
       "### Final Opinion",
-      "The Lessee **must recognize a Right-of-Use Asset and a Lease Liability** at commencement under Ind AS 116."
+      "The Lessee **must recognize a Right-of-Use Asset and a Lease Liability** at commencement under Ind AS 116.",
     ].join("\n"),
   };
 }
@@ -173,20 +182,30 @@ export function transformToQ1Q9Schema(
     const evidenceText = evidence?.agreementEvidence || "N/A";
     const reasoningText = c.reasoning || "";
 
-    let promptText = `Please confirm the parameter for ${c.criterion}.`;
-    let options = ["Yes", "No"];
+    let promptText =
+      c.managementQuestion?.questionText ||
+      `Please confirm the parameter for ${c.criterion}.`;
+    let options = c.managementQuestion?.options || ["Yes", "No"];
+    let aiUnderstanding = c.managementQuestion?.aiUnderstanding || "";
+    let whyAsked =
+      c.managementQuestion?.whyAsked ||
+      `To complete the Ind AS 116 assessment for ${c.criterion}.`;
 
-    if (isPending && c.managementQuestion) {
+    if (c.managementQuestion) {
       const qObj = c.managementQuestion;
-      promptText = qObj.questionText || promptText;
-      options = qObj.options || options;
-
-      const whyPart = qObj.whyAsked ? `\n\nWhy Asked: ${qObj.whyAsked}` : "";
+      const whyPart = whyAsked ? `\n\nWhy Asked: ${whyAsked}` : "";
       const missingPart =
         qObj.missingEvidence && qObj.missingEvidence.length > 0
           ? `\n\nMissing Evidence: ${qObj.missingEvidence.join(", ")}`
           : "";
       c.reasoning = (c.reasoning || "") + whyPart + missingPart;
+    }
+
+    if (!aiUnderstanding) {
+      aiUnderstanding =
+        evidence?.agreementEvidence && evidence.agreementEvidence !== "N/A"
+          ? `I identified the following evidence: "${evidence.agreementEvidence}"`
+          : `I could not find clear evidence in the agreement regarding this criterion.`;
     }
 
     // Clean professional template-driven formatting for observations and citations
@@ -204,7 +223,7 @@ export function transformToQ1Q9Schema(
           : c.decision === "Satisfied"
             ? "Criterion satisfied."
             : "Criterion not satisfied."
-      }`
+      }`,
     ].join("\n");
 
     return {
@@ -221,6 +240,8 @@ export function transformToQ1Q9Schema(
       explanation,
       promptText,
       options,
+      aiUnderstanding,
+      whyAsked,
     } as ILeaseAssessmentQuestion;
   });
 }
@@ -367,11 +388,18 @@ export async function startLeaseAssessment(
          * CRITICAL LEASE PAYMENTS RULE: If the agreement payments are completely variable (e.g. rate per unit of electricity supplied, price per actual hour used, parking charge per vehicle) and contain no unavoidable in-substance fixed payments or minimum guarantees, you MUST classify the decision for "Lease Payments" as "Not Satisfied" or "Variable Only". Under Ind AS 116, usage-based variable payments do not qualify as lease payments for capitalization, meaning lease liability cannot be calculated.
        - reasoning: A very short, direct observation of fact (1 sentence max).
        - requiresManagement: boolean indicating if evidence is missing or ambiguous.
-       - If requiresManagement is true, construct a managementQuestion object containing:
-         * questionText: precise management clarification prompt.
-         * missingEvidence: array of what parameters are missing from the agreement text.
-         * whyAsked: explanation of why the question is needed.
-         * options: standard confirmation options (typically ["Yes", "No"]).
+       - You MUST construct a customized managementQuestion object for EVERY single criterion in the assessmentMatrix, regardless of whether requiresManagement is true or false.
+          * CRITICAL DRAFTING INSTRUCTIONS FOR MANAGEMENT CLARIFICATIONS:
+            1. Tone & Vocabulary: Use simple, plain, non-technical business language. Avoid technical accounting terms or jargon (such as "Identified Asset parameter", "Ind AS B20", "right of use asset", "lease liability capitalization", or generic phrases like "confirm the parameter"). Write like a helpful auditor speaking directly to a client's business manager.
+            2. aiUnderstanding: Provide a concise, 1-2 sentence description summarizing what the agreement text specifically states, mentions, or leaves blank for this criterion (e.g., "The agreement leaves the shop number and floor details blank, indicating that a specific space might not be designated yet.")
+            3. whyAsked: Explain in plain English the logical reason or business impact. Do NOT say "To complete the Ind AS 116 assessment". Instead, explain the logic (e.g., "If the specific space is not fixed in the agreement, we cannot recognize it as a lease for accounting purposes.")
+            4. questionText: Write a clear, direct, non-technical question tailored to the agreement's clauses or gaps that a manager can answer with a simple "Yes" or "No".
+               - Avoid placeholders or templates. Refer to the actual text/clauses.
+               - Example for Identified Asset with blank spaces: "Does this agreement grant you the right to occupy a specific, physically defined retail shop area rather than any general space in the mall?"
+               - Example for Substitution Rights: "At the inception of the contract, is it realistically expected that the lessor will relocation you to another space during the lease term?"
+               - Example for Lease Payments: "Does the agreement include any minimum guaranteed rent payments, or is the rent entirely variable based on your monthly sales?"
+            5. options: standard confirmation options (typically ["Yes", "No"]).
+            6. missingEvidence: array of what parameters are missing from the agreement text.
 
     Return your response strictly as a JSON object matching this schema, without markdown backticks:
     {
@@ -408,9 +436,10 @@ export async function startLeaseAssessment(
           "reasoning": "string",
           "managementQuestion": {
             "questionText": "string",
-            "missingEvidence": ["string"],
+            "aiUnderstanding": "string",
             "whyAsked": "string",
-            "options": ["string"]
+            "options": ["string"],
+            "missingEvidence": ["string"]
           }
         }
       ],
@@ -549,20 +578,38 @@ export const confirmController = async (req: Request, res: Response) => {
     assessment.questions[qIndex].status = "confirmed";
     assessment.questions[qIndex].confidence = 1.0;
 
-    const geminiApiKey = process.env.GEMINI_API_KEY as string;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const remainingPending = assessment.questions.filter(
+      (q) => q.status === "pending",
+    ).length;
 
-    // Dynamic AI re-evaluation based on confirmed answer and context
-    const { recommendation, recommendationNarrative } =
-      await reevaluateRecommendationWithAI(
-        assessment.questions,
-        assessment.rawText,
-        geminiApiKey,
-        geminiModel,
+    if (remainingPending === 0) {
+      console.log(
+        `[Assessment Engine] All questions confirmed. Running final Gemini re-evaluation for ${agreementId}...`,
       );
+      const geminiApiKey = process.env.GEMINI_API_KEY as string;
+      const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-    assessment.recommendation = recommendation;
-    assessment.recommendationNarrative = recommendationNarrative;
+      // Dynamic AI re-evaluation based on confirmed answer and context
+      const { recommendation, recommendationNarrative } =
+        await reevaluateRecommendationWithAI(
+          assessment.questions,
+          assessment.rawText,
+          geminiApiKey,
+          geminiModel,
+        );
+
+      assessment.recommendation = recommendation;
+      assessment.recommendationNarrative = recommendationNarrative;
+    } else {
+      console.log(
+        `[Assessment Engine] Updated question ${questionId}. ${remainingPending} questions pending. Running local classification.`,
+      );
+      // Fast path: run deterministic local evaluation
+      const { recommendation, recommendationNarrative } =
+        computeFinalClassification(assessment.questions);
+      assessment.recommendation = recommendation;
+      assessment.recommendationNarrative = recommendationNarrative;
+    }
 
     await assessment.save();
     console.log(

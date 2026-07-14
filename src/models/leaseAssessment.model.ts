@@ -9,6 +9,8 @@ export interface ILeaseAssessmentQuestion {
   explanation: string;
   promptText?: string;
   options?: string[];
+  aiUnderstanding?: string;
+  whyAsked?: string;
 }
 
 export interface ILeaseAssessment extends Document {
@@ -39,6 +41,8 @@ const LeaseAssessmentQuestionSchema = new Schema({
   explanation: { type: String, default: "" },
   promptText: { type: String },
   options: { type: [String] },
+  aiUnderstanding: { type: String },
+  whyAsked: { type: String },
 });
 
 const LeaseAssessmentSchema = new Schema(
