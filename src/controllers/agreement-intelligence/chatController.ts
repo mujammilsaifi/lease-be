@@ -7,7 +7,9 @@ export const chatController = async (req: Request, res: Response) => {
     const { message, extractedData, rawText, history, contextType } = req.body;
 
     if (!message || !extractedData) {
-      return res.status(400).json({ error: "message and extractedData are required" });
+      return res
+        .status(400)
+        .json({ error: "message and extractedData are required" });
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -24,11 +26,16 @@ export const chatController = async (req: Request, res: Response) => {
       rawText || "",
       extractedData,
       geminiApiKey,
-      contextType || "financial-data"
+      contextType || "financial-data",
     );
 
     // 2. Call Gemini model with the synthesized retrieval prompt
-    const { text: rawResponse } = await callGemini(geminiApiKey, geminiModel, brainResult.prompt, true);
+    const { text: rawResponse } = await callGemini(
+      geminiApiKey,
+      geminiModel,
+      brainResult.prompt,
+      true,
+    );
     const parsedResponse = JSON.parse(cleanJsonResponse(rawResponse));
 
     // 3. Return response with embedded RAG debugging parameters
@@ -42,7 +49,8 @@ export const chatController = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error in chatController:", error);
-    return res.status(500).json({ error: "Internal server error", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 };
-

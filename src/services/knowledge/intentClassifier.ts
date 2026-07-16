@@ -17,10 +17,10 @@ export interface IntentResult {
 export async function classifyIntent(
   query: string,
   history: ChatMessage[],
-  apiKey: string
+  apiKey: string,
 ): Promise<IntentResult> {
   const ai = new GoogleGenAI({ apiKey });
-  
+
   // Format history as a conversation transcript
   const formattedHistory = history
     .filter((msg) => msg.id !== "welcome") // skip welcome message
@@ -75,24 +75,32 @@ export async function classifyIntent(
 
     const text = response.text?.trim() || "";
     // Clean JSON markdown blocks if any
-    const cleanJsonText = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    const cleanJsonText = text
+      .replace(/^```json\s*/i, "")
+      .replace(/```$/, "")
+      .trim();
     const result = JSON.parse(cleanJsonText) as IntentResult;
-    
+
     if (!Array.isArray(result.categories)) {
       result.categories = ["LEASE_IDENTIFICATION"];
     }
     if (!result.standaloneQuery) {
       result.standaloneQuery = query;
     }
-    
-    console.log(`[Intent Classifier] Classified: ${result.categories.join(", ")} | Standalone Query: "${result.standaloneQuery}"`);
+
+    console.log(
+      `[Intent Classifier] Classified: ${result.categories.join(", ")} | Standalone Query: "${result.standaloneQuery}"`,
+    );
     return result;
   } catch (error) {
-    console.error("[Intent Classifier] Classification failed, using fallback:", error);
+    console.error(
+      "[Intent Classifier] Classification failed, using fallback:",
+      error,
+    );
     return {
       categories: ["LEASE_IDENTIFICATION"],
       standaloneQuery: query,
-      explanation: "Fallback due to classification error"
+      explanation: "Fallback due to classification error",
     };
   }
 }

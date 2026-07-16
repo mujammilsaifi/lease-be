@@ -3,7 +3,10 @@ import fs from "fs";
 import { emitProgress } from "./extractProgressController";
 import { startLeaseAssessment } from "../agreement-intelligence/assessmentController";
 
-async function performOCR(filePath: string, trackingId?: string): Promise<string> {
+async function performOCR(
+  filePath: string,
+  trackingId?: string,
+): Promise<string> {
   console.log("OCR Triggered for file:", filePath);
   let parser;
   try {
@@ -38,13 +41,14 @@ async function performOCR(filePath: string, trackingId?: string): Promise<string
         `Performing OCR on page ${page.pageNumber}/${screenshots.pages.length}...`,
       );
       if (trackingId) {
-        const percentage = 20 + Math.floor((page.pageNumber / screenshots.pages.length) * 50);
+        const percentage =
+          20 + Math.floor((page.pageNumber / screenshots.pages.length) * 50);
         emitProgress(trackingId, {
           stage: "ocr",
           percentage,
           message: `Processing page ${page.pageNumber} of ${screenshots.pages.length}...`,
           currentPage: page.pageNumber,
-          totalPages: screenshots.pages.length
+          totalPages: screenshots.pages.length,
         });
       }
       const {
@@ -165,7 +169,7 @@ async function extractTextFromWord(filePath: string): Promise<string> {
 export async function performFinancialExtractionDirect(
   processedText: string,
   geminiApiKey: string,
-  geminiModel: string
+  geminiModel: string,
 ): Promise<any> {
   const analysisPrompt = `
     You are an expert lease agreement reader and writer. 
@@ -279,18 +283,23 @@ export async function performFinancialExtractionDirect(
     Respond strictly with the raw JSON. Do not include any explanation, markdown formatting, comments, or extra text.
   `;
 
-  const { text: leaseAnalysis } = await callGemini(geminiApiKey, geminiModel, analysisPrompt);
+  const { text: leaseAnalysis } = await callGemini(
+    geminiApiKey,
+    geminiModel,
+    analysisPrompt,
+  );
   const { text: responseText } = await callGemini(
     geminiApiKey,
     geminiModel,
     schemaPrompt.replace("{{LEASE_ANALYSIS}}", leaseAnalysis),
-    true
+    true,
   );
 
   const parsedJson = JSON.parse(cleanJsonResponse(responseText));
   normalizeLinkedPeriods(parsedJson);
 
-  const confidence = typeof parsedJson.confidence === "number" ? parsedJson.confidence : 1.0;
+  const confidence =
+    typeof parsedJson.confidence === "number" ? parsedJson.confidence : 1.0;
   parsedJson.requiresManualReview = confidence < 0.7;
   parsedJson.rawText = processedText;
 
@@ -305,7 +314,8 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
 
     const fileMime = req.file.mimetype;
-    const fileExt = req.file.originalname?.split(".").pop()?.toLowerCase() || "";
+    const fileExt =
+      req.file.originalname?.split(".").pop()?.toLowerCase() || "";
     const isValidMime = SUPPORTED_MIME_TYPES.includes(fileMime);
     const isValidExt = ["pdf", "doc", "docx"].includes(fileExt);
 
@@ -360,8 +370,8 @@ export const extractPdfController = async (req: Request, res: Response) => {
       if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
         console.log(
           `Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(
-            avgCharsPerPage
-          )} chars/page). Triggering OCR...`
+            avgCharsPerPage,
+          )} chars/page). Triggering OCR...`,
         );
         if (trackingId) {
           emitProgress(trackingId, {
@@ -391,7 +401,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
       try {
         extractedText = await extractTextFromWord(req.file.path);
       } catch (wordErr: any) {
-        throw new Error(`Failed to extract text from Word document: ${wordErr.message}`);
+        throw new Error(
+          `Failed to extract text from Word document: ${wordErr.message}`,
+        );
       }
       if (trackingId) {
         emitProgress(trackingId, {
@@ -426,7 +438,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
       req.file.originalname,
       extractedText,
       geminiApiKey,
-      geminiModel
+      geminiModel,
     );
 
     if (trackingId) {
