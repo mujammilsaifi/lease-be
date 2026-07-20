@@ -419,7 +419,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");

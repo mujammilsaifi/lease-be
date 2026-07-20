@@ -536,7 +536,7 @@ export const assessController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
@@ -601,7 +601,7 @@ export const confirmController = async (req: Request, res: Response) => {
         `[Assessment Engine] All questions confirmed. Running final Gemini re-evaluation for ${agreementId}...`,
       );
       const geminiApiKey = process.env.GEMINI_API_KEY as string;
-      const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+      const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
       // Dynamic AI re-evaluation based on confirmed answer and context
       const { recommendation, recommendationNarrative } =
@@ -669,7 +669,7 @@ export const approveController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
@@ -750,11 +750,9 @@ export const regenerateController = async (req: Request, res: Response) => {
   try {
     const { agreementId, managementInputs } = req.body;
     if (!agreementId || !Array.isArray(managementInputs)) {
-      return res
-        .status(400)
-        .json({
-          error: "agreementId and managementInputs (array) are required",
-        });
+      return res.status(400).json({
+        error: "agreementId and managementInputs (array) are required",
+      });
     }
 
     const assessment = await LeaseAssessment.findOne({ agreementId });
@@ -765,7 +763,7 @@ export const regenerateController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
