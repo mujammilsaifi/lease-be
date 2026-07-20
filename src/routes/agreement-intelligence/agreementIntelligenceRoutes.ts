@@ -5,6 +5,7 @@ import {
   assessController,
   confirmController,
   approveController,
+  regenerateController,
 } from "../../controllers/agreement-intelligence/assessmentController";
 
 const router = express.Router();
@@ -14,6 +15,7 @@ router.put("/fields", fieldsController);
 router.post("/assess", assessController);
 router.post("/confirm", confirmController);
 router.post("/approve", approveController);
+router.post("/regenerate", regenerateController);
 
 export default router;
 

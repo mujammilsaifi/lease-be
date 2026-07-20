@@ -21,6 +21,9 @@ export interface ILeaseAssessment extends Document {
   recommendation: "Lease" | "Service Contract" | "Exempt Lease" | null;
   overallConfidence: number;
   recommendationNarrative: string;
+  recommendationNarrativeVersion1?: string;
+  recommendationNarrativeVersion2?: string;
+  managementInputs?: string[];
   status: "in_progress" | "accepted_lease" | "accepted_service" | "overridden";
   overrideReason?: string;
   financialDataExtracted: boolean;
@@ -58,6 +61,9 @@ const LeaseAssessmentSchema = new Schema(
     },
     overallConfidence: { type: Number, default: 0 },
     recommendationNarrative: { type: String, default: "" },
+    recommendationNarrativeVersion1: { type: String, default: "" },
+    recommendationNarrativeVersion2: { type: String, default: "" },
+    managementInputs: { type: [String], default: [] },
     status: {
       type: String,
       enum: ["in_progress", "accepted_lease", "accepted_service", "overridden"],

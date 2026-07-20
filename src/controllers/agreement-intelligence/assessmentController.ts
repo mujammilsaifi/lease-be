@@ -16,16 +16,23 @@ export function computeFinalClassification(
   recommendation: "Lease" | "Service Contract" | "Exempt Lease";
   recommendationNarrative: string;
 } {
-  const qMap = new Map<string, string | null>();
-  questions.forEach((q) => qMap.set(q.questionId, q.answer));
+  const getAnswerForPrefix = (prefix: string, defaultVal: string): string => {
+    const match = questions.find(
+      (q) =>
+        q.questionId === prefix ||
+        q.questionId.startsWith(prefix + "_") ||
+        q.questionId.startsWith(prefix + "-"),
+    );
+    return match ? (match.answer ?? defaultVal) : defaultVal;
+  };
 
-  const q1 = qMap.get("Q1");
-  const q2 = qMap.get("Q2");
-  const q3 = qMap.get("Q3");
-  const q4 = qMap.get("Q4");
-  const q6 = qMap.get("Q6");
-  const q7 = qMap.get("Q7");
-  const q9 = qMap.get("Q9");
+  const q1 = getAnswerForPrefix("Q1", "Yes");
+  const q2 = getAnswerForPrefix("Q2", "No");
+  const q3 = getAnswerForPrefix("Q3", "Yes");
+  const q4 = getAnswerForPrefix("Q4", "Yes");
+  const q6 = getAnswerForPrefix("Q6", "No");
+  const q7 = getAnswerForPrefix("Q7", "No");
+  const q9 = getAnswerForPrefix("Q9", "Yes");
 
   // 1. Variable-only payment check (Company Policy Override)
   if (
@@ -38,16 +45,14 @@ export function computeFinalClassification(
       recommendation: "Service Contract",
       recommendationNarrative: [
         "### Executive Summary",
+        "We have conducted an independent qualitative assessment of the contract under Ind AS 116 guidelines to evaluate the accounting treatment. The contract governs usage-based operations where the payments are entirely variable and contingent upon the actual output or utilization, without any guaranteed minimum payments or unavoidable fixed fees. Under Ind AS 116, lease payments must be fixed or in-substance fixed to qualify for capitalization. Because there are no unavoidable payments, a lease liability cannot be mathematically calculated, and consequently, a Right-of-Use (ROU) asset cannot be recognized. This arrangement is classified as a service contract, and all payments should be recognized as operating expenses in the statement of profit and loss as they are incurred. This aligns with standard audit practices for variable-only arrangements, ensuring compliant reporting for the CFO.",
         "",
+        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
         "",
-        "**Reason:**",
-        "The agreement specifies variable-only payments based on usage or output with no minimum guaranteed or in-substance fixed lease payments.",
+        "**Reason:** The agreement specifies variable-only payments based on usage or output with no minimum guaranteed or in-substance fixed lease payments.",
         "",
-        "**Lease accounting under Ind AS 116 is therefore not applicable.**",
-        "",
-        "### Final Opinion",
-        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
+        "**Final Opinion:** Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
       ].join("\n"),
     };
   }
@@ -71,16 +76,14 @@ export function computeFinalClassification(
       recommendation: "Service Contract",
       recommendationNarrative: [
         "### Executive Summary",
+        "We have completed a qualitative audit of the agreement under the Ind AS 116 framework to identify whether it contains a lease. Based on our evaluation, one or more core criteria for lease identification are not satisfied. Specifically, the customer does not have the exclusive right to direct the use of the asset, does not obtain substantially all of the economic benefits, or the lessor retains substantive substitution rights to replace the asset throughout the term. Because these qualitative criteria are mandatory, the arrangement cannot be classified as a lease for accounting purposes. Instead, it must be accounted for as a service contract, meaning no right-of-use asset or lease liability should be recognized on the balance sheet. All contract costs must be recognized as operating expenses when incurred.",
         "",
+        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
         "",
-        "**Reason:**",
-        reason,
+        "**Reason:** " + reason,
         "",
-        "**Lease accounting under Ind AS 116 is therefore not applicable.**",
-        "",
-        "### Final Opinion",
-        "Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
+        "**Final Opinion:** Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
       ].join("\n"),
     };
   }
@@ -91,14 +94,14 @@ export function computeFinalClassification(
       recommendation: "Exempt Lease",
       recommendationNarrative: [
         "### Executive Summary",
+        "We have evaluated the uploaded contract under the Ind AS 116 lease accounting standard. The contract contains a lease, but it qualifies for the Low-Value Asset exemption because the underlying value of the asset when new is below the established threshold of ₹3,00,000 / $5,000. Under Ind AS 116, lessees can elect not to recognize right-of-use assets and lease liabilities for low-value leases. Choosing this exemption allows the lessee to recognize the lease payments as an expense on a straight-line basis over the lease term, simplifying the accounting process and reducing balance sheet complexity. This is highly recommended for administrative and office equipment assets that meet the threshold, as it avoids unnecessary capitalization and auditing overhead.",
         "",
+        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
         "",
-        "**Reason:**",
-        "The lease qualifies for the Low-Value Exemption (underlying value < ₹3,00,000 / $5,000).",
+        "**Reason:** The lease qualifies for the Low-Value Exemption (underlying value < ₹3,00,000 / $5,000).",
         "",
-        "### Final Opinion",
-        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
+        "**Final Opinion:** Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
       ].join("\n"),
     };
   }
@@ -109,14 +112,14 @@ export function computeFinalClassification(
       recommendation: "Exempt Lease",
       recommendationNarrative: [
         "### Executive Summary",
+        "We have conducted a professional review of the lease agreement under Ind AS 116 criteria. The contract contains a lease, but it qualifies for the Short-Term Lease exemption because the lease term is 12 months or less from the commencement date, and there is no purchase option. Ind AS 116 permits lessees to exempt short-term leases from standard capitalization rules. Consequently, the lessee is not required to recognize a right-of-use asset or a corresponding lease liability on the balance sheet. Instead, the lease payments should be expensed as operating costs on either a straight-line basis or another systematic basis over the lease term, ensuring simplified accounting compliance and streamlined financial reporting.",
         "",
+        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
         "",
-        "**Reason:**",
-        "The lease qualifies for the Short-Term Exemption (lease term of 12 months or less).",
+        "**Reason:** The lease qualifies for the Short-Term Exemption (lease term of 12 months or less).",
         "",
-        "### Final Opinion",
-        "Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
+        "**Final Opinion:** Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
       ].join("\n"),
     };
   }
@@ -126,122 +129,36 @@ export function computeFinalClassification(
     recommendation: "Lease",
     recommendationNarrative: [
       "### Executive Summary",
+      "We have conducted a thorough accounting assessment of the contract under the Ind AS 116 standard. The agreement meets all qualitative criteria required to identify a lease: there is an explicitly or implicitly identified physical asset, the supplier has no substantive substitution rights, and the lessee obtains substantially all economic benefits while directing the asset's use throughout the period. Furthermore, the payments contain fixed or in-substance fixed elements, and the lease term exceeds the 12-month short-term exemption threshold. Therefore, standard lease accounting is mandatory. The lessee must capitalize the lease by recognizing a Right-of-Use (ROU) asset and a corresponding lease liability at the commencement date, reflecting the present value of the future lease payments.",
       "",
+      "### Professional Assessment Conclusion",
       "**Conclusion:** The arrangement **contains a lease** under Ind AS 116.",
       "",
-      "**Reason:**",
-      "The agreement satisfies all lease identification criteria: there is an identified asset, no substantive supplier substitution rights, and the customer obtains substantially all economic benefits and directs the asset's use.",
+      "**Reason:** The agreement satisfies all lease identification criteria: there is an identified asset, no substantive supplier substitution rights, and the customer obtains substantially all economic benefits and directs the asset's use.",
       "",
-      "### Final Opinion",
-      "The Lessee **must recognize a Right-of-Use Asset and a Lease Liability** at commencement under Ind AS 116.",
+      "**Final Opinion:** The Lessee **must recognize a Right-of-Use Asset and a Lease Liability** at commencement under Ind AS 116.",
     ].join("\n"),
   };
 }
 
-// Transformation Layer: Converts Internal Assessment Matrix and Evidence Matrix into Q1-Q9 layout
+// Transformation Layer: Formats the dynamically generated questions list from Gemini
 export function transformToQ1Q9Schema(
-  assessmentMatrix: any[],
-  evidenceMatrix: any[],
+  questionsList: any[],
 ): ILeaseAssessmentQuestion[] {
-  const criterionMap: { [key: string]: string } = {
-    "Identified Asset": "Q1",
-    "Substitution Rights": "Q2",
-    "Economic Benefits": "Q3",
-    "Right to Direct Use": "Q4",
-    "Separate Components": "Q5",
-    "Low Value Exemption": "Q6",
-    "Short-Term Exemption": "Q7",
-    "Lease Term": "Q8",
-    "Lease Payments": "Q9",
-  };
-
-  const evidenceMap = new Map<string, any>(
-    (evidenceMatrix || []).map((e) => [e.criterion, e]),
-  );
-
-  return (assessmentMatrix || []).map((c) => {
-    const qId = criterionMap[c.criterion] || "Q1";
-    const evidence = evidenceMap.get(c.criterion);
-
-    const isPending =
-      c.requiresManagement === true ||
-      c.decision === "Insufficient Evidence" ||
-      (evidence && evidence.confidence < 1.0);
-
-    let answerText: string | null = null;
-    if (!isPending) {
-      if (qId === "Q8" || qId === "Q9") {
-        answerText = c.decision;
-      } else {
-        answerText = c.decision === "Satisfied" ? "Yes" : "No";
-      }
-    }
-
-    const ruleId = evidence?.kbRuleId || "N/A";
-    const ruleTitle = evidence?.kbRuleTitle || "N/A";
-    const evidenceText = evidence?.agreementEvidence || "N/A";
-    const reasoningText = c.reasoning || "";
-
-    let promptText =
-      c.managementQuestion?.questionText ||
-      `Please confirm the parameter for ${c.criterion}.`;
-    let options = c.managementQuestion?.options || ["Yes", "No"];
-    let aiUnderstanding = c.managementQuestion?.aiUnderstanding || "";
-    let whyAsked =
-      c.managementQuestion?.whyAsked ||
-      `To complete the Ind AS 116 assessment for ${c.criterion}.`;
-
-    if (c.managementQuestion) {
-      const qObj = c.managementQuestion;
-      const whyPart = whyAsked ? `\n\nWhy Asked: ${whyAsked}` : "";
-      const missingPart =
-        qObj.missingEvidence && qObj.missingEvidence.length > 0
-          ? `\n\nMissing Evidence: ${qObj.missingEvidence.join(", ")}`
-          : "";
-      c.reasoning = (c.reasoning || "") + whyPart + missingPart;
-    }
-
-    if (!aiUnderstanding) {
-      aiUnderstanding =
-        evidence?.agreementEvidence && evidence.agreementEvidence !== "N/A"
-          ? `I identified the following evidence: "${evidence.agreementEvidence}"`
-          : `I could not find clear evidence in the agreement regarding this criterion.`;
-    }
-
-    // Clean professional template-driven formatting for observations and citations
-    const refText = ruleId !== "N/A" ? `${ruleTitle} (${ruleId})` : ruleTitle;
-    const explanation = [
-      `**Ind AS Reference:**\n${refText}`,
-      "",
-      `**Evidence:**\n${evidenceText}`,
-      "",
-      `**Assessment:**\n${reasoningText}`,
-      "",
-      `**Conclusion:**\n${
-        isPending
-          ? "Pending management confirmation."
-          : c.decision === "Satisfied"
-            ? "Criterion satisfied."
-            : "Criterion not satisfied."
-      }`,
-    ].join("\n");
-
+  return (questionsList || []).map((q) => {
+    const isPending = (q.confidence ?? 0) < 1.0;
     return {
-      questionId: qId,
-      title: c.criterion,
+      questionId: q.questionId || "Q1",
+      title: q.title || "Criteria",
       status: isPending ? "pending" : "automated",
-      answer: answerText,
+      answer: isPending ? null : q.answer,
       confidence:
-        evidence?.confidence !== undefined
-          ? evidence.confidence
-          : isPending
-            ? 0.5
-            : 1.0,
-      explanation,
-      promptText,
-      options,
-      aiUnderstanding,
-      whyAsked,
+        q.confidence !== undefined ? q.confidence : isPending ? 0.5 : 1.0,
+      explanation: q.explanation || "",
+      promptText: q.promptText || "",
+      options: q.options || ["Yes", "No"],
+      aiUnderstanding: q.aiUnderstanding || "",
+      whyAsked: q.whyAsked || "",
     } as ILeaseAssessmentQuestion;
   });
 }
@@ -310,13 +227,18 @@ export async function reevaluateRecommendationWithAI(
       - You must write in the tone and language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO or corporate finance team.
       - DO NOT use generic AI filler words or transition phrases (e.g., "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover...").
       - DO NOT use textbook definitions of Ind AS 116 criteria (e.g. avoid repeating "substantive substitution rights", "identified asset", "economic benefits" multiple times). State only observations of fact and direct accounting conclusions.
-      - Keep the explanation extremely brief, concise, and direct. Citing the relevant clauses and standard paragraphs (e.g., Para B14-B19).
+      - Keep the explanation extremely brief, concise, and direct.
+      - REFERENCING RULE: Refer to accounting standard ONLY as "Ind AS 116". DO NOT include question numbers (e.g. Q1-Q9, Question 1), paragraph numbers/citations (e.g. Para B14-B19), specific example names/numbers, or internal file locations/logic names.
       - Format "recommendationNarrative" exactly like a CA's Final Assessment in Markdown:
-        ### Reason for Classification
-        [Concise paragraph explaining the core reason. Cite the relevant clause and the Ind AS standard paragraph e.g. B14-B19]
+        ### Executive Summary
+        [A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, and classification rationale.]
 
-        ### Recommendation
-        [Direct, clear statement of whether Right-of-Use Asset or Lease Liability should be recognized under Ind AS 116]
+        ### Professional Assessment Conclusion
+        **Conclusion:** [Conclusion statement under Ind AS 116]
+        
+        **Reason:** [Core audit reasons referencing ONLY Ind AS 116]
+        
+        **Final Opinion:** [Actionable accounting recommendation e.g. recognition of ROU Asset and Lease Liability]
 
       Return your response strictly as a JSON object matching this schema, without any markdown formatting or extra text:
       {
@@ -346,6 +268,95 @@ export async function reevaluateRecommendationWithAI(
       err,
     );
     return computeFinalClassification(questions);
+  }
+}
+
+// AI-driven regeneration incorporating custom management inputs (comments, notes, assumptions)
+export async function regenerateRecommendationWithAIAndInputs(
+  questions: ILeaseAssessmentQuestion[],
+  rawText: string,
+  managementInputs: string[],
+  originalRecommendation: string,
+  geminiApiKey: string,
+  geminiModel: string,
+): Promise<string> {
+  try {
+    const categories = ["LEASE_IDENTIFICATION", "LEASE_TERM", "VALIDATION"];
+    const requiredFiles = getRequiredFilesForIntents(categories);
+    const scoredChunks = await retrieveScoredChunks(
+      "Evaluate qualitative criteria to categorize as Lease or Service Contract under Ind AS 116",
+      categories,
+      requiredFiles,
+      geminiApiKey,
+    );
+    const { selected: rerankedChunks } = rerankCandidates(
+      scoredChunks,
+      requiredFiles,
+    );
+    const ragContext = assembleContext(rerankedChunks, []);
+
+    const prompt = `
+      You are a Chartered Accountant (CA) auditing lease arrangements under Ind AS 116.
+      You are preparing a REGENERATED lease assessment summary report.
+      This report is Version 2, which incorporates additional management inputs (business comments, notes, or assumptions) alongside the original lease text and the confirmed question answers.
+
+      CRITICAL COMPLIANCE RULES (RAG Context):
+      ${ragContext}
+
+      Original Lease Text:
+      ${rawText || "[Original lease text not available]"}
+
+      Confirmed Answers to Qualitative Questions:
+      ${JSON.stringify(
+        questions.map((q) => ({
+          questionId: q.questionId,
+          title: q.title,
+          answer: q.answer,
+          explanation: q.explanation,
+        })),
+        null,
+        2,
+      )}
+
+      Original Determined Classification: ${originalRecommendation}
+
+      ADDITIONAL MANAGEMENT INPUTS / BUSINESS CONTEXT:
+      ${managementInputs.map((input, idx) => `${idx + 1}. ${input}`).join("\n")}
+
+      CRITICAL ALIGNMENT INSTRUCTION:
+      Your narrative MUST align perfectly with the ORIGINAL DETERMINED CLASSIFICATION (${originalRecommendation}), the confirmed answers, and the new management inputs.
+      - Treat the management inputs as valid business assumptions, background context, or explanatory notes provided by the company's management.
+      - Integrate these management comments and assumptions seamlessly into your narrative (e.g. in the Executive Summary or in the audit explanation).
+      - REFERENCING RULE: Refer to accounting standard ONLY as "Ind AS 116". DO NOT include question numbers (e.g. Q1-Q9, Question 1), paragraph numbers/citations (e.g. Para B14-B19), specific example names/numbers, or internal file locations/logic names.
+      - Keep the explanation extremely brief, concise, and direct.
+
+      CRITICAL AUDITING & WRITING STYLE INSTRUCTIONS:
+      - You must write in the tone and language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO or corporate finance team.
+      - DO NOT use generic AI filler words or transition phrases.
+      - DO NOT use textbook definitions of Ind AS 116 criteria. State only observations of fact, management inputs, and direct accounting conclusions.
+      - Format "recommendationNarrative" exactly like a CA's Final Assessment in Markdown:
+        ### Executive Summary
+        [A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, how management's comments/inputs affect or clarify the business context, and classification rationale.]
+
+        ### Professional Assessment Conclusion
+        **Conclusion:** [Conclusion statement under Ind AS 116]
+        
+        **Reason:** [Core audit reasons referencing ONLY Ind AS 116]
+        
+        **Final Opinion:** [Actionable accounting recommendation e.g. recognition of ROU Asset and Lease Liability]
+
+      Return your response strictly as a JSON object matching this schema, without any markdown formatting or extra text:
+      {
+        "recommendationNarrative": "markdown formatted string as instructed above"
+      }
+    `;
+
+    const { text } = await callGemini(geminiApiKey, geminiModel, prompt, true);
+    const result = JSON.parse(cleanJsonResponse(text));
+    return result.recommendationNarrative;
+  } catch (err) {
+    console.warn("[Assessment Engine] AI regeneration failed:", err);
+    throw err;
   }
 }
 
@@ -380,34 +391,37 @@ export async function startLeaseAssessment(
 
     CRITICAL AUDITING & WRITING STYLE INSTRUCTIONS:
     - Tone: Write in the language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO.
-    - Style: Be extremely brief, concise, and direct. Citing the relevant clauses and standard paragraphs (e.g., Para B14-B19).
+    - Style: Be extremely brief, concise, and direct. Refer to accounting standard ONLY as "Ind AS 116". DO NOT include question numbers (e.g. Q1-Q9, Question 1), paragraph numbers/citations (e.g. Para B14-B19), specific example names/numbers, or internal file locations.
     - Jargon: DO NOT use generic AI transition phrases (e.g. "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover..."). State only direct contractual observations.
-    - Concise Table Observations: Keep the "reasoning" for each criterion inside the "assessmentMatrix" down to a single brief sentence or short bulleted observation of fact (e.g. "Lessor can relocate Lessee to a comparable space at any time" or "Lessee occupies the unit exclusively for business"). Do not write generic paragraphs or restate Ind AS definitions.
-    - Confidence Scores: Avoid assigning exactly 1.00 (100%) confidence for evaluative criteria (like Identified Asset, Substitution Rights, Control, Economic Benefits). Use values like 0.85 to 0.95 to reflect professional judgement. Only assign 1.00 for verified, explicit numerical or contractual facts (e.g. lease term duration of 20 years or a fixed rent amount).
 
     Your execution steps:
     1. PHASE 1 (AGREEMENT MODEL): Read the agreement and extract raw document facts (agreementType, lessorName, lesseeName, assetDescription, paymentClause, paymentType, leaseTerm, commencementDate, expiryDate, lockInPeriod, noticePeriod, supplierRelocationClause). Do not perform any accounting classification.
-    2. PHASE 2 (EVIDENCE MATRIX): For each of the 9 required criteria (Identified Asset, Substitution Rights, Economic Benefits, Right to Direct Use, Separate Components, Low Value Exemption, Short-Term Exemption, Lease Term, Lease Payments):
-       - Locate the applicable rule ID, rule title, and rule explanation from the RAG context.
-       - Find the matching clause or evidence in the agreement.
-       - Assign a confidence score (float 0.0 to 1.0) adhering to the confidence guidelines.
-    3. PHASE 3 (ASSESSMENT MATRIX): Evaluate the evidence against the KB rules to determine:
-       - decision: "Satisfied", "Not Satisfied", or "Insufficient Evidence". 
-         * CRITICAL LEASE PAYMENTS RULE: If the agreement payments are completely variable (e.g. rate per unit of electricity supplied, price per actual hour used, parking charge per vehicle) and contain no unavoidable in-substance fixed payments or minimum guarantees, you MUST classify the decision for "Lease Payments" as "Not Satisfied" or "Variable Only". Under Ind AS 116, usage-based variable payments do not qualify as lease payments for capitalization, meaning lease liability cannot be calculated.
-       - reasoning: A very short, direct observation of fact (1 sentence max).
-       - requiresManagement: boolean indicating if evidence is missing or ambiguous.
-       - You MUST construct a customized managementQuestion object for EVERY single criterion in the assessmentMatrix, regardless of whether requiresManagement is true or false.
-          * CRITICAL DRAFTING INSTRUCTIONS FOR MANAGEMENT CLARIFICATIONS:
-            1. Tone & Vocabulary: Use simple, plain, non-technical business language. Avoid technical accounting terms or jargon (such as "Identified Asset parameter", "Ind AS B20", "right of use asset", "lease liability capitalization", or generic phrases like "confirm the parameter"). Write like a helpful auditor speaking directly to a client's business manager.
-            2. aiUnderstanding: Provide a concise, 1-2 sentence description summarizing what the agreement text specifically states, mentions, or leaves blank for this criterion (e.g., "The agreement leaves the shop number and floor details blank, indicating that a specific space might not be designated yet.")
-            3. whyAsked: Explain in plain English the logical reason or business impact. Do NOT say "To complete the Ind AS 116 assessment". Instead, explain the logic (e.g., "If the specific space is not fixed in the agreement, we cannot recognize it as a lease for accounting purposes.")
-            4. questionText: Write a clear, direct, non-technical question tailored to the agreement's clauses or gaps that a manager can answer with a simple "Yes" or "No".
-               - Avoid placeholders or templates. Refer to the actual text/clauses.
-               - Example for Identified Asset with blank spaces: "Does this agreement grant you the right to occupy a specific, physically defined retail shop area rather than any general space in the mall?"
-               - Example for Substitution Rights: "At the inception of the contract, is it realistically expected that the lessor will relocation you to another space during the lease term?"
-               - Example for Lease Payments: "Does the agreement include any minimum guaranteed rent payments, or is the rent entirely variable based on your monthly sales?"
-            5. options: standard confirmation options (typically ["Yes", "No"]).
-            6. missingEvidence: array of what parameters are missing from the agreement text.
+    2. PHASE 2 (DYNAMIC QUESTIONS GENERATION):
+       Analyze the contract and decide which lease assessment criteria/questions are relevant under Ind AS 116.
+       - A question is RELEVANT if it helps classify the contract as a lease (under Ind AS 116), determine the lease term, or identify the lease payments.
+       - Do NOT generate questions that are completely irrelevant to the agreement's context. For example, if the leased asset is clearly a building, office, power plant, or large/expensive asset, the "Low Value Exemption" is completely irrelevant, so do NOT generate any question for it.
+       - For each relevant question, assign a questionId starting with one of these prefixes (corresponding to the standard Ind AS 116 checkpoints):
+         - "Q1" for Identified Asset (e.g. Q1_asset)
+         - "Q2" for Substitution Rights (e.g. Q2_substitution)
+         - "Q3" for Economic Benefits (e.g. Q3_benefits)
+         - "Q4" for Right to Direct Use (e.g. Q4_control)
+         - "Q5" for Separate Components (e.g. Q5_components)
+         - "Q6" for Low Value Exemption (e.g. Q6_lowvalue)
+         - "Q7" for Short-Term Exemption (e.g. Q7_shortterm)
+         - "Q8" for Lease Term (e.g. Q8_term, Q8_renewal, Q8_purchase)
+         - "Q9" for Lease Payments (e.g. Q9_payments, Q9_extra)
+       - Auto-answering logic:
+         - First, attempt to answer the question automatically using the agreement content and the RAG knowledge base.
+         - If the agreement provides clear, explicit, and sufficient evidence to answer the question, set \`confidence\` to exactly \`1.00\` (100% confidence) and provide the \`answer\` (e.g., "Yes", "No", or specific facts). Such questions will be automatically confirmed without management intervention.
+         - If the question cannot be answered from the contract alone (e.g., it depends on management's intent, future choices, facts outside the contract, or if the contract is silent on relocation/substitution ability), set \`confidence\` to less than \`1.00\` (e.g., \`0.80\` to \`0.95\`). In this case, set \`answer\` to \`null\` (since it requires management input), and specify \`promptText\` as a clear, natural language question tailored to this agreement, along with \`aiUnderstanding\` and \`whyAsked\`.
+         - Avoid generating generic questions. Tailor the \`promptText\`, \`aiUnderstanding\`, and \`whyAsked\` to the specific facts, names, and assets mentioned in the agreement.
+       - Dynamic options logic:
+         - You must dynamically generate the response choices (\`options\`) to perfectly match the context, range, or nature of the question instead of defaulting only to "Yes" and "No". For example:
+           * If asking about low-value thresholds: \`["Less than INR 3,00,000", "More than INR 3,00,000"]\` or specific relevant ranges.
+           * If asking about lease duration: \`["12 months or less", "More than 12 months"]\`
+           * If asking about payments: \`["Fixed Payments", "Variable Payments", "Both"]\`
+           * If asking standard confirmation: \`["Yes", "No"]\`
+         - CRITICAL: Management must never be presented with uncertainty. Do NOT include any options like "Unsure", "Unknown", "Insufficient Evidence", "N/A", "Maybe", or "Pending" in the \`options\` list. Management is expected to make a definitive business decision.
 
     Return your response strictly as a JSON object matching this schema, without markdown backticks:
     {
@@ -427,31 +441,20 @@ export async function startLeaseAssessment(
           "supplierRelocationClause": "string"
         }
       },
-      "evidenceMatrix": [
+      "questions": [
         {
-          "criterion": "Identified Asset" | "Substitution Rights" | "Economic Benefits" | "Right to Direct Use" | "Separate Components" | "Low Value Exemption" | "Short-Term Exemption" | "Lease Term" | "Lease Payments",
-          "kbRuleId": "string",
-          "kbRuleTitle": "string",
-          "agreementEvidence": "string",
-          "confidence": number
+          "questionId": "string (prefix matching Q1-Q9 e.g. Q1_asset, Q8_renewal)",
+          "title": "string (short description e.g. Identified Asset, Renewal Option)",
+          "confidence": number,
+          "answer": "string | null",
+          "explanation": "string (concise CA-grade observation of fact referencing Ind AS 116 only. Do NOT include question numbers, paragraph numbers, or example names)",
+          "promptText": "string (clear, natural language question asked to management, e.g. 'Is the lessee reasonably certain to exercise the renewal option?')",
+          "options": ["string"],
+          "aiUnderstanding": "string (what the AI identified in the contract)",
+          "whyAsked": "string (why management confirmation is required)"
         }
       ],
-      "assessmentMatrix": [
-        {
-          "criterion": "Identified Asset" | "Substitution Rights" | "Economic Benefits" | "Right to Direct Use" | "Separate Components" | "Low Value Exemption" | "Short-Term Exemption" | "Lease Term" | "Lease Payments",
-          "decision": "Satisfied" | "Not Satisfied" | "Insufficient Evidence",
-          "requiresManagement": boolean,
-          "reasoning": "string",
-          "managementQuestion": {
-            "questionText": "string",
-            "aiUnderstanding": "string",
-            "whyAsked": "string",
-            "options": ["string"],
-            "missingEvidence": ["string"]
-          }
-        }
-      ],
-      "recommendationNarrative": "A professional, Chartered Accountant (CA) grade audit summary formatted in Markdown. Structure it exactly as:\n\n### Reason for Classification\n[Concise paragraph explaining the core reason. Cite the relevant clause and the Ind AS standard paragraph e.g. B14-B19]\n\n### Recommendation\n[Direct, clear statement of whether Right-of-Use Asset or Lease Liability should be recognized under Ind AS 116]"
+      "recommendationNarrative": "A professional, Chartered Accountant (CA) grade audit summary formatted in Markdown. Structure it exactly as:\\n\\n### Executive Summary\\n[A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, and classification rationale.]\\n\\n### Professional Assessment Conclusion\\n**Conclusion:** [Conclusion statement under Ind AS 116]\\n\\n**Reason:** [Core audit reasons referencing ONLY Ind AS 116]\\n\\n**Final Opinion:** [Actionable accounting recommendation e.g. recognition of ROU Asset and Lease Liability]"
     }
 
     Original Lease Document Text:
@@ -470,17 +473,14 @@ export async function startLeaseAssessment(
   console.log("DEBUG: Raw assessment response from Gemini:", rawResponse);
   const parsedResponse = JSON.parse(cleanJsonResponse(rawResponse));
 
-  // C. Map the Evidence and Assessment matrices into the expected Q1-Q9 UI/DB Schema
-  const questions = transformToQ1Q9Schema(
-    parsedResponse.assessmentMatrix,
-    parsedResponse.evidenceMatrix,
-  );
+  // C. Map the dynamically generated questions into the expected UI/DB Schema
+  const questions = transformToQ1Q9Schema(parsedResponse.questions || []);
 
   // D. Deterministic Backend matrix recommendation classification calculation
   const { recommendation, recommendationNarrative: fallbackNarrative } =
     computeFinalClassification(questions);
 
-  const q9 = questions.find((q) => q.questionId === "Q9")?.answer;
+  const q9 = questions.find((q) => q.questionId.startsWith("Q9"))?.answer;
   const isVariableOnly =
     q9 === "Variable Only" ||
     q9 === "Not Satisfied" ||
@@ -493,6 +493,10 @@ export async function startLeaseAssessment(
 
   const agreementId = "AGR-" + Date.now();
 
+  const remainingPending = questions.filter(
+    (q) => q.status === "pending",
+  ).length;
+
   // E. Save the LeaseAssessment session
   const assessmentSession = new LeaseAssessment({
     agreementId,
@@ -500,13 +504,15 @@ export async function startLeaseAssessment(
     rawText,
     questions,
     recommendation,
-    overallConfidence: parsedResponse.evidenceMatrix
-      ? parsedResponse.evidenceMatrix.reduce(
+    overallConfidence: parsedResponse.questions
+      ? parsedResponse.questions.reduce(
           (acc: number, curr: any) => acc + (curr.confidence || 0),
           0,
-        ) / parsedResponse.evidenceMatrix.length
+        ) / parsedResponse.questions.length
       : 0.9,
     recommendationNarrative,
+    recommendationNarrativeVersion1:
+      remainingPending === 0 ? recommendationNarrative : "",
     status: "in_progress",
     financialDataExtracted: false,
   });
@@ -530,7 +536,7 @@ export const assessController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
@@ -595,7 +601,7 @@ export const confirmController = async (req: Request, res: Response) => {
         `[Assessment Engine] All questions confirmed. Running final Gemini re-evaluation for ${agreementId}...`,
       );
       const geminiApiKey = process.env.GEMINI_API_KEY as string;
-      const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
       // Dynamic AI re-evaluation based on confirmed answer and context
       const { recommendation, recommendationNarrative } =
@@ -608,6 +614,7 @@ export const confirmController = async (req: Request, res: Response) => {
 
       assessment.recommendation = recommendation;
       assessment.recommendationNarrative = recommendationNarrative;
+      assessment.recommendationNarrativeVersion1 = recommendationNarrative;
     } else {
       console.log(
         `[Assessment Engine] Updated question ${questionId}. ${remainingPending} questions pending. Running local classification.`,
@@ -662,7 +669,7 @@ export const approveController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
@@ -732,6 +739,72 @@ export const approveController = async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     console.error("Error in approveController:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+};
+
+// 5. Controller for POST /api/v1/agreement-intelligence/regenerate
+export const regenerateController = async (req: Request, res: Response) => {
+  try {
+    const { agreementId, managementInputs } = req.body;
+    if (!agreementId || !Array.isArray(managementInputs)) {
+      return res
+        .status(400)
+        .json({
+          error: "agreementId and managementInputs (array) are required",
+        });
+    }
+
+    const assessment = await LeaseAssessment.findOne({ agreementId });
+    if (!assessment) {
+      return res
+        .status(404)
+        .json({ error: "Lease assessment session not found" });
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY is not configured.");
+    }
+
+    // Save inputs
+    assessment.managementInputs = managementInputs;
+
+    // Ensure Version 1 is preserved
+    if (!assessment.recommendationNarrativeVersion1) {
+      assessment.recommendationNarrativeVersion1 =
+        assessment.recommendationNarrative || "";
+    }
+
+    console.log(
+      `[Assessment Engine] Regenerating summary with management inputs for ${agreementId}...`,
+    );
+
+    // Regenerate with management inputs
+    const regeneratedNarrative = await regenerateRecommendationWithAIAndInputs(
+      assessment.questions,
+      assessment.rawText,
+      managementInputs,
+      assessment.recommendation || "Lease",
+      geminiApiKey,
+      geminiModel,
+    );
+
+    assessment.recommendationNarrativeVersion2 = regeneratedNarrative;
+    assessment.recommendationNarrative = regeneratedNarrative;
+
+    await assessment.save();
+
+    console.log(
+      `[Assessment Engine] Regenerated summary for ${agreementId} as Version 2`,
+    );
+
+    return res.status(200).json(assessment);
+  } catch (error: any) {
+    console.error("Error in regenerateController:", error);
     return res
       .status(500)
       .json({ error: "Internal server error", details: error.message });

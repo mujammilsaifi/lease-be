@@ -13,7 +13,7 @@ dotenv.config();
 
 const MONGO_URI = process.env.MONGODB_URL as string;
 const API_KEY = process.env.GEMINI_API_KEY as string;
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 if (!MONGO_URI || !API_KEY) {
   console.error(
