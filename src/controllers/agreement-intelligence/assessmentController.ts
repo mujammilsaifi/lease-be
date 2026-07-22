@@ -47,7 +47,6 @@ export function computeFinalClassification(
         "### Executive Summary",
         "We have conducted an independent qualitative assessment of the contract under Ind AS 116 guidelines to evaluate the accounting treatment. The contract governs usage-based operations where the payments are entirely variable and contingent upon the actual output or utilization, without any guaranteed minimum payments or unavoidable fixed fees. Under Ind AS 116, lease payments must be fixed or in-substance fixed to qualify for capitalization. Because there are no unavoidable payments, a lease liability cannot be mathematically calculated, and consequently, a Right-of-Use (ROU) asset cannot be recognized. This arrangement is classified as a service contract, and all payments should be recognized as operating expenses in the statement of profit and loss as they are incurred. This aligns with standard audit practices for variable-only arrangements, ensuring compliant reporting for the CFO.",
         "",
-        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
         "",
         "**Reason:** The agreement specifies variable-only payments based on usage or output with no minimum guaranteed or in-substance fixed lease payments.",
@@ -78,7 +77,6 @@ export function computeFinalClassification(
         "### Executive Summary",
         "We have completed a qualitative audit of the agreement under the Ind AS 116 framework to identify whether it contains a lease. Based on our evaluation, one or more core criteria for lease identification are not satisfied. Specifically, the customer does not have the exclusive right to direct the use of the asset, does not obtain substantially all of the economic benefits, or the lessor retains substantive substitution rights to replace the asset throughout the term. Because these qualitative criteria are mandatory, the arrangement cannot be classified as a lease for accounting purposes. Instead, it must be accounted for as a service contract, meaning no right-of-use asset or lease liability should be recognized on the balance sheet. All contract costs must be recognized as operating expenses when incurred.",
         "",
-        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
         "",
         "**Reason:** " + reason,
@@ -96,7 +94,6 @@ export function computeFinalClassification(
         "### Executive Summary",
         "We have evaluated the uploaded contract under the Ind AS 116 lease accounting standard. The contract contains a lease, but it qualifies for the Low-Value Asset exemption because the underlying value of the asset when new is below the established threshold of ₹3,00,000 / $5,000. Under Ind AS 116, lessees can elect not to recognize right-of-use assets and lease liabilities for low-value leases. Choosing this exemption allows the lessee to recognize the lease payments as an expense on a straight-line basis over the lease term, simplifying the accounting process and reducing balance sheet complexity. This is highly recommended for administrative and office equipment assets that meet the threshold, as it avoids unnecessary capitalization and auditing overhead.",
         "",
-        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
         "",
         "**Reason:** The lease qualifies for the Low-Value Exemption (underlying value < ₹3,00,000 / $5,000).",
@@ -112,9 +109,8 @@ export function computeFinalClassification(
       recommendation: "Exempt Lease",
       recommendationNarrative: [
         "### Executive Summary",
-        "We have conducted a professional review of the lease agreement under Ind AS 116 criteria. The contract contains a lease, but it qualifies for the Short-Term Lease exemption because the lease term is 12 months or less from the commencement date, and there is no purchase option. Ind AS 116 permits lessees to exempt short-term leases from standard capitalization rules. Consequently, the lessee is not required to recognize a right-of-use asset or a corresponding lease liability on the balance sheet. Instead, the lease payments should be expensed as operating costs on either a straight-line basis or another systematic basis over the lease term, ensuring simplified accounting compliance and streamlined financial reporting.",
+        "We have conducted a professional review of the lease agreement under Ind AS 116 criteria. The contract contains a lease, but it qualifies for the Short-Term Lease exemption because the lease term is 12 months or less from the commencement date, and there is no purchase option. Ind AS 116 permits lessees to exempt short-term leases from standard capitalization rules. Consequently, the lessee is not required to recognize a right-of-use asset or a corresponding lease liability on the balance sheet. Instead, the lease payments should be expensed as operating costs on either a systematic basis or straight-line basis, ensuring simplified accounting compliance and streamlined financial reporting.",
         "",
-        "### Professional Assessment Conclusion",
         "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
         "",
         "**Reason:** The lease qualifies for the Short-Term Exemption (lease term of 12 months or less).",
@@ -131,7 +127,6 @@ export function computeFinalClassification(
       "### Executive Summary",
       "We have conducted a thorough accounting assessment of the contract under the Ind AS 116 standard. The agreement meets all qualitative criteria required to identify a lease: there is an explicitly or implicitly identified physical asset, the supplier has no substantive substitution rights, and the lessee obtains substantially all economic benefits while directing the asset's use throughout the period. Furthermore, the payments contain fixed or in-substance fixed elements, and the lease term exceeds the 12-month short-term exemption threshold. Therefore, standard lease accounting is mandatory. The lessee must capitalize the lease by recognizing a Right-of-Use (ROU) asset and a corresponding lease liability at the commencement date, reflecting the present value of the future lease payments.",
       "",
-      "### Professional Assessment Conclusion",
       "**Conclusion:** The arrangement **contains a lease** under Ind AS 116.",
       "",
       "**Reason:** The agreement satisfies all lease identification criteria: there is an identified asset, no substantive supplier substitution rights, and the customer obtains substantially all economic benefits and directs the asset's use.",
@@ -233,7 +228,6 @@ export async function reevaluateRecommendationWithAI(
         ### Executive Summary
         [A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, and classification rationale.]
 
-        ### Professional Assessment Conclusion
         **Conclusion:** [Conclusion statement under Ind AS 116]
         
         **Reason:** [Core audit reasons referencing ONLY Ind AS 116]
@@ -338,7 +332,6 @@ export async function regenerateRecommendationWithAIAndInputs(
         ### Executive Summary
         [A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, how management's comments/inputs affect or clarify the business context, and classification rationale.]
 
-        ### Professional Assessment Conclusion
         **Conclusion:** [Conclusion statement under Ind AS 116]
         
         **Reason:** [Core audit reasons referencing ONLY Ind AS 116]
@@ -454,7 +447,7 @@ export async function startLeaseAssessment(
           "whyAsked": "string (why management confirmation is required)"
         }
       ],
-      "recommendationNarrative": "A professional, Chartered Accountant (CA) grade audit summary formatted in Markdown. Structure it exactly as:\\n\\n### Executive Summary\\n[A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, and classification rationale.]\\n\\n### Professional Assessment Conclusion\\n**Conclusion:** [Conclusion statement under Ind AS 116]\\n\\n**Reason:** [Core audit reasons referencing ONLY Ind AS 116]\\n\\n**Final Opinion:** [Actionable accounting recommendation e.g. recognition of ROU Asset and Lease Liability]"
+      "recommendationNarrative": "A professional, Chartered Accountant (CA) grade audit summary formatted in Markdown. Structure it exactly as:\\n\\n### Executive Summary\\n[A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, and classification rationale.]\\n\\n**Conclusion:** [Conclusion statement under Ind AS 116]\\n\\n**Reason:** [Core audit reasons referencing ONLY Ind AS 116]\\n\\n**Final Opinion:** [Actionable accounting recommendation e.g. recognition of ROU Asset and Lease Liability]"
     }
 
     Original Lease Document Text:
