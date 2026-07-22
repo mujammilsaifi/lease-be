@@ -667,69 +667,25 @@ export const approveController = async (req: Request, res: Response) => {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
 
-    if (status === "accepted_lease" || status === "overridden") {
-      console.log(
-        `[Assessment Engine] Running financial data extraction for ${agreementId}...`,
-      );
-      const financialData = await performFinancialExtractionDirect(
-        assessment.rawText,
-        geminiApiKey,
-        geminiModel,
-      );
+    console.log(
+      `[Assessment Engine] Running financial data extraction for ${agreementId}...`,
+    );
+    const financialData = await performFinancialExtractionDirect(
+      assessment.rawText,
+      geminiApiKey,
+      geminiModel,
+    );
 
-      assessment.financialDataExtracted = true;
-      await assessment.save();
+    assessment.financialDataExtracted = true;
+    await assessment.save();
 
-      return res.status(200).json({
-        status,
-        financialData: {
-          ...financialData,
-          agreementId,
-        },
-      });
-    } else {
-      await assessment.save();
-      const report = `
-        <h3>Ind AS 116 Lease Assessment Report</h3>
-        <p><strong>Agreement Name:</strong> ${assessment.fileName}</p>
-        <p><strong>Assessment Session ID:</strong> ${assessment.agreementId}</p>
-        <p><strong>Final Decision:</strong> Service Contract (Accepted by User)</p>
-        <p><strong>AI Recommendation:</strong> ${assessment.recommendationNarrative}</p>
-        <br/>
-        <h4>Assessment Criteria Results:</h4>
-        <table border="1" cellpadding="6" style="border-collapse: collapse; width: 100%;">
-          <thead>
-            <tr style="background-color: #f2f2f2;">
-              <th>Question ID</th>
-              <th>Criteria Description</th>
-              <th>AI Decision</th>
-              <th>Status</th>
-              <th>Explanation</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${assessment.questions
-              .map(
-                (q) => `
-              <tr>
-                <td><strong>${q.questionId}</strong></td>
-                <td>${q.title}</td>
-                <td>${q.answer}</td>
-                <td>${q.status}</td>
-                <td>${q.explanation}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      `;
-
-      return res.status(200).json({
-        status,
-        report,
-      });
-    }
+    return res.status(200).json({
+      status,
+      financialData: {
+        ...financialData,
+        agreementId,
+      },
+    });
   } catch (error: any) {
     console.error("Error in approveController:", error);
     return res
