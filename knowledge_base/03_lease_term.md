@@ -20,13 +20,13 @@ b) periods covered by an option to extend the lease if the lessee is reasonably 
 
 c) periods covered by an option to terminate the lease if the lessee is reasonably certain not to exercise that option.
 
-A lease is no longer enforceable when the lessee and the lessor each have the right to terminate the lease without permission from the other party with no more than an insignificant penalty. 
+A lease is no longer enforceable when the lessee and the lessor each have the right to terminate the lease without permission from the other party with no more than an insignificant penalty.
 
 An entity shall revise the lease term if there is a change in the non-cancellable period of a lease.
 
 In accordance with the above, an arrangement to use an identified asset would meet the definition of a lease if it conveys the right to use an asset for a non- cancellable period of time. There is no requirement in the Standard for the non-cancellable period to be continuous. Accordingly, an arrangement that provides right to control the use of an identified asset would meet the definition of a lease even if it contains intermittent periods during which the customer does not have the right to control the use of the asset.
 
-Paragraph B34 of Ind AS 116, states as follows: 
+Paragraph B34 of Ind AS 116, states as follows:
 
 “In determining the lease term and assessing the length of the noncancellable period of a lease, an entity shall apply the definition of a contract and determine the period for which the contract is enforceable. A lease is no longer enforceable when the lessee and the lessor each has the right to terminate the lease without permission from the other party with no more than an insignificant penalty”
 
@@ -40,15 +40,15 @@ The lease term begins at the commencement date and includes any rent-free period
 
 Example 1 : ABC Ltd leases an office for 5 years.
 
-Lease commencement: 1 April 2025 
+Lease commencement: 1 April 2025
 
-Lease expiry: 31 March 2030 
+Lease expiry: 31 March 2030
 
 Non Cancellable period – 3 years
 
-No renewal option 
+No renewal option
 
-No termination option 
+No termination option
 
 Analysis
 
@@ -80,23 +80,23 @@ Example 2 : Renewal Option – Reasonably Certain to Exercise
 
 ABC Ltd leases a warehouse.
 
-Initial term: 5 years 
+Initial term: 5 years
 
-Renewal option: additional 5 years 
+Renewal option: additional 5 years
 
-Significant leasehold improvements of ₹5 crore 
+Significant leasehold improvements of ₹5 crore
 
-Warehouse is strategically located next to factory 
+Warehouse is strategically located next to factory
 
 Analysis
 
 Leaving after 5 years would result in:
 
-Loss of leasehold improvements 
+Loss of leasehold improvements
 
-Business disruption 
+Business disruption
 
-Relocation costs 
+Relocation costs
 
 ABC is reasonably certain to renew the lease
 
@@ -122,13 +122,13 @@ Example 3: Renewal Option – Not Reasonably Certain
 
 Retail shop leased for 3 years.
 
-Renewal option: 3 years 
+Renewal option: 3 years
 
-Market rentals expected to decline 
+Market rentals expected to decline
 
-Alternative shops readily available 
+Alternative shops readily available
 
-No significant fit-out investment 
+No significant fit-out investment
 
 Analysis
 
@@ -152,17 +152,17 @@ Lease term
 
 3 years
 
-Example 4 : Only Lessee can Termination the lease 
+Example 4 : Only Lessee can Termination the lease
 
 Office lease:
 
-10-year lease 
+10-year lease
 
-Lessee can terminate after Year 6, Lessor can not terminate 
+Lessee can terminate after Year 6, Lessor can not terminate
 
-Termination penalty = 1 month's rent 
+Termination penalty = 1 month's rent
 
-Company plans to shift to owned premises in Year 6 
+Company plans to shift to owned premises in Year 6
 
 Analysis
 
@@ -190,11 +190,11 @@ Example 5: Only Lessee has Termination Option But Not Expected To Be Exercised
 
 Manufacturing plant lease:
 
-10-year lease 
+10-year lease
 
 Lessee can terminate after Year 5 , Lessor can not terminate
 
-₹20 crore specialized machinery installed 
+₹20 crore specialized machinery installed
 
 Analysis
 
@@ -224,11 +224,11 @@ Example 6: Only Lessor Has Termination Right
 
 Lease agreement:
 
-Nominal term = 10 years 
+Nominal term = 10 years
 
-Lessor can terminate after Year 3 
+Lessor can terminate after Year 3
 
-Lessee cannot terminate 
+Lessee cannot terminate
 
 Analysis
 
@@ -260,9 +260,9 @@ Office lease continues indefinitely.
 
 Either party can terminate:
 
-With 1 month's notice 
+With 1 month's notice
 
-No penalty 
+No penalty
 
 Analysis
 
@@ -284,11 +284,11 @@ Example 8 : Rent-Free Period
 
 Office lease:
 
-Commencement date: 1 April 2025 
+Commencement date: 1 April 2025
 
-Free rent for first 6 months 
+Free rent for first 6 months
 
-Paid rent thereafter for 4.5 years 
+Paid rent thereafter for 4.5 years
 
 Analysis
 
@@ -354,19 +354,19 @@ A lessee may elect to apply the short-term lease exemption.
 
 If elected:
 
-No lease liability is recognized. 
+No lease liability is recognized.
 
-No right-of-use asset is recognized. 
+No right-of-use asset is recognized.
 
 Lease payments are recognized as an expense.
 
 Example 1 : Office taken on rent:
 
-Lease term = 11 months 
+Lease term = 11 months
 
-Monthly rent = ₹50,000 
+Monthly rent = ₹50,000
 
-No purchase option 
+No purchase option
 
 Since lease term ≤ 12 months:
 
@@ -376,11 +376,11 @@ Example 2 – Not a Short-term Lease
 
 Lease agreement:
 
-Initial term = 11 months 
+Initial term = 11 months
 
-Renewal option = 11 months 
+Renewal option = 11 months
 
-Lessee is reasonably certain to renew 
+Lessee is reasonably certain to renew
 
 Lease term:
 
@@ -404,7 +404,7 @@ What is the lease term?
 
 Response
 
-Considering Paragraph 5 of  Ind AS 116 and Ind AS 116 defines the terms ‘lease’ and ‘short-term lease’ as follows:
+Considering Paragraph 5 of Ind AS 116 and Ind AS 116 defines the terms ‘lease’ and ‘short-term lease’ as follows:
 
 “The non-cancellable period for which a lessee has the right to use an underlying asset together with both:
 
@@ -416,7 +416,7 @@ Short-term lease
 
 “A lease that, at the commencement date, has a lease term of 12 months or less is a short term lease. A lease that contains a purchase option is not a short-term lease”.
 
-Paragraph B34 of Ind AS 116 states the following, inter alia: 
+Paragraph B34 of Ind AS 116 states the following, inter alia:
 
 “In determining the lease term and assessing the length of the non-cancellable period of a lease, an entity shall apply the definition of a contract and determine the period for which the contract is enforceable.”
 
@@ -426,7 +426,7 @@ The term ‘contract’ is defined in the standard as follows:
 
 As per a combined reading of the above, in determining the lease term (and therefore, in determining whether a lease is a short-term lease), only the enforceable rights of the lessee to renew or extend the lease beyond the non-cancellable period are taken into consideration. For example:
 
-Where a lease agreement grants the lessee a right (an option) to renew or extend the lessee beyond the non-cancellable period without the consent of the lessor, the lessee has the right to use the asset beyond the non-cancellable period. Accordingly, the period covered by the lessee’s option to renew or extend the lease is included in the lease term if the lessee is reasonably certain to exercise that option. 
+Where a lease agreement grants the lessee a right (an option) to renew or extend the lessee beyond the non-cancellable period without the consent of the lessor, the lessee has the right to use the asset beyond the non-cancellable period. Accordingly, the period covered by the lessee’s option to renew or extend the lease is included in the lease term if the lessee is reasonably certain to exercise that option.
 
 In contrast, where a lease agreement can be renewed or extended by the lessee beyond the non-cancellable period only with the consent of the lessor, the lessee does not have the right to use the asset beyond the non-cancellable period. By definition, there is no contract beyond the non-cancellable period if there are no enforceable rights and obligations existing between the lessee and lessor beyond that term.
 

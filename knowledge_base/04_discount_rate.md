@@ -1,6 +1,13 @@
 # Discount Rate / Incremental Borrowing Rate (IBR)
 
 ## Definition
+
+category: DISCOUNT_RATE
+topic: Rate of Interest
+priority: 1
+keywords: discount rate, incremental borrowing rate, ibr, implicit rate, rate of interest
+module: Module 5
+
 Under IND AS 116, the lessee shall discount the lease payments using the interest rate implicit in the lease if that rate can be readily determined. If that rate cannot be readily determined, the lessee shall use the lessee’s incremental borrowing rate (IBR).
 
 ## Incremental Borrowing Rate (IBR)

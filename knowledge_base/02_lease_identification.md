@@ -444,7 +444,7 @@ Whether Entity Y has substantive substitution rights?
 
 Response 
 
-Paragraph B16 of Ind AS 116, inter alia, states that, “an entity’s evaluation of whether a supplier’s substitution right is substantive is based on facts and circumstances at inception of the contract and shall exclude consideration of future events that at inception of the contract are not considered likely to occur. Examples of future events that, at inception of the contract would not be considered likely to occur and thus should be excluded from evaluation include: (a) an agreement by a future customer to pay an above market ratefor use of the asset.”
+Paragraph B16 of Ind AS 116, inter alia, states that, “an entity’s evaluation of whether a supplier’s substitution right is substantive is based on facts and circumstances at inception of the contract and shall exclude consideration of future events that at inception of the contract are not considered likely to occur. Examples of future events that, at inception of the contract would not be considered likely to occur and thus should be excluded from evaluation include: (a) an agreement by a future customer to pay an above market rate for use of the asset.”
 
 Even though Entity Y has the practical ability to substitute the retail unit, it could benefit economically from substitution only in specific circumstances. At inception of the contract those circumstances are not considered likely to arise. Therefore, as per the paragraph B16 of the standard, Entity Y’s substitution right is not substantive.
 

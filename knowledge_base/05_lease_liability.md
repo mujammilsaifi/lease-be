@@ -496,6 +496,46 @@ This unavoidable payment is an in-substance fixed payment, and would be consider
 
 Amount to be considered for calculating lease liability – INR 10,000
 
+## Step 3: Cost of the Right-of-Use (ROU) Asset
+
+category: LEASE_LIABILITY
+topic: Cost of Right-of-Use Asset
+priority: 2
+keywords: right-of-use asset, restoration cost, major overhaul, dismantling cost, aircraft lease, depreciation
+module: Module 3
+
+The cost of the right-of-use (ROU) asset shall comprise:
+
+(a) the amount of the initial measurement of the lease liability, as described in paragraph 26;
+
+(b) any lease payments made at or before the commencement date, less any lease incentives received;
+
+(c) any initial direct costs incurred by the lessee; and
+
+(d) an estimate of costs to be incurred by the lessee in dismantling and removing the underlying asset, restoring the site on which it is located or restoring the underlying asset to the condition required by the terms and conditions of the lease, unless those costs are incurred to produce inventories. The lessee incurs the obligation for those costs either at the commencement date or as a consequence of having used the underlying asset during a particular period.
+
+### Example - Scenario
+
+Question 43
+What are the lease payments for purposes of calculating ROU asset in the following scenarios?
+
+Scenario A: Entity X (lessee) enters into an agreement to lease an aircraft for a period of 10 years from Entity Y (lessor). It is agreed that at the end of the lease, Entity X will pay INR 200,000 for restoring of the aircraft irrespective of usage of aircraft.
+
+Scenario B: Entity X (lessee) enters into an agreement to lease an aircraft for a period of 10 years from Entity Y (lessor). As per the terms of the lease contract, apart from lease rentals, Entity X is required to pay INR. 20,000 annually to the lessor towards major overhaul expenditure that the lessor expects to incur for the aircraft. The amount is payable irrespective of the actual usage of the aircraft and irrespective of whether the lessor actually incurs any major overhaul expenditure or not.
+
+Scenario C: Entity X (lessee) enters into an agreement to lease an aircraft for a period of 10 years from Entity Y (lessor). As part of the lease arrangement, it is agreed that the aircraft will undergo major overhaul expense at the end of 4th and 8th years irrespective of the flying hours clocked and that the expenditure for the same will be borne by the Entity X.
+
+### Response
+
+Scenario A:
+In the given scenario, as the Entity X will incur cost for restoring the aircraft (the underlying asset) at the end of the lease, the same gives rise to an obligation. As a result, Entity X has to recognise a provision for the costs of restoration of the aircraft (“present value of the expected cost”) at the beginning of the lease term. Further, in accordance with paragraph 24(d) of Ind AS 116, these costs should be included in the cost of the right-of-use (ROU) asset.
+
+Scenario B:
+In the given scenario, the payment of INR 20,000 annually is the payment made to the lessor irrespective of the usage or actual incurring of major overhaul expenditure and hence will be included in the lease payments for computation of lease liability and right of use asset.
+
+Scenario C:
+In the given scenario, Entity X will undergo major maintenance or overhaul at the end of 4th and 8th years of the lease term. As per paragraph 24(d) of Ind AS 116, the estimate of costs to be incurred for restoring the underlying asset as per the terms of the lease is to be included as a part of cost of ROU asset and depreciated over the lease term i.e., 10 years. However, as per paragraph 31 of Ind AS 116, a lessee shall apply the requirements in Ind AS 16, Property, Plant and Equipment, in depreciating the ROU asset. Thus, Entity X may depreciate the major overhaul costs as a separate component over the useful life of 4 years and at the end of the 4th year, capitalise the estimate of the costs to be incurred at the end of the next 4 years‘ period.
+
 ## Step 3: Initial Direct Costs (IDC)
 
 category: LEASE_LIABILITY
