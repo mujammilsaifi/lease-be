@@ -1,5 +1,8 @@
 # Data Extraction Logic & Rules
 
+## Assessment & Measurement Guidelines
+1. **Qualitative & Quantitative Assessment:** Your assessment should be qualitative as well as quantitative which is required for measuring rent and other quantitative measures such as in-substance fixed lease payments.
+
 ## Digital vs. OCR Extraction Heuristics
 1. **Initial Pass:** Extract digital text using `pdf-parse`.
 2. **Quality Heuristics:**

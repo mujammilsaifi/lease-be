@@ -24,6 +24,17 @@ A lease extraction must have `requiresManualReview: true` if:
 
 ## Variable Lease Payment Rule (IND AS 116 Applicability)
 
-1. If the agreement specifies variable lease payments and no minimum guaranteed lease payment or in-substance fixed lease payments can be identified:
+1. In case there is variable lease payments mentioned in the agreement, AI must assess whether there is any in-substance fixed lease rent mentioned in the agreement.
+2. If the agreement specifies variable lease payments and no minimum guaranteed lease payment or in-substance fixed lease payments can be identified:
    - Do NOT extract a rent amount (set it to null/0).
    - In the qualitative assessment narrative, state: `"since lease liability can not be calculated lease payments are variable and does not include any in-substance fixed lease payments therefore , IND AS 116 will not be applicable on the agreement."`
+
+## Assessment Guidelines (Qualitative & Quantitative)
+
+1. Your assessment should be qualitative as well as quantitative which is required for measuring rent and other quantitative measures such as in-substance fixed lease payments.
+
+## Low-Value Asset Rule & Guidelines
+
+1. **Management Confirmation Only:** In case AI assesses that a leased asset could qualify as a low-value asset, AI must ONLY ask management whether to consider that asset as a low-value asset or not (providing options such as `["Yes", "No"]`).
+2. **Strict Prohibition on Monetary Thresholds:** AI MUST NOT mention, specify, or refer to any monetary threshold (such as ₹3,00,000 or $5,000) when identifying, asking about, or describing the low-value asset to management.
+

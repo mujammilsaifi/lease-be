@@ -45,11 +45,11 @@ export function computeFinalClassification(
       recommendation: "Service Contract",
       recommendationNarrative: [
         "### Executive Summary",
-        "We have conducted an independent qualitative assessment of the contract under Ind AS 116 guidelines to evaluate the accounting treatment. The contract governs usage-based operations where the payments are entirely variable and contingent upon the actual output or utilization, without any guaranteed minimum payments or unavoidable fixed fees. Under Ind AS 116, lease payments must be fixed or in-substance fixed to qualify for capitalization. Because there are no unavoidable payments, a lease liability cannot be mathematically calculated, and consequently, a Right-of-Use (ROU) asset cannot be recognized. This arrangement is classified as a service contract, and all payments should be recognized as operating expenses in the statement of profit and loss as they are incurred. This aligns with standard audit practices for variable-only arrangements, ensuring compliant reporting for the CFO.",
+        "We have conducted an independent qualitative assessment of the contract under Ind AS 116 guidelines to evaluate the accounting treatment. The contract governs usage-based operations where the payments are entirely variable and contingent upon the actual output or utilization, without any guaranteed minimum payments or unavoidable fixed fees. In accordance with company audit guidelines, in case variable lease payments are mentioned in the agreement, AI must assess whether there is any in-substance fixed lease rent mentioned in the agreement. Under Ind AS 116, lease payments must be fixed or in-substance fixed to qualify for capitalization. Because there are no unavoidable in-substance fixed payments or minimum guaranteed lease amounts, a lease liability cannot be mathematically calculated, and consequently, a Right-of-Use (ROU) asset cannot be recognized. This arrangement is classified as a service contract, and all payments should be recognized as operating expenses in the statement of profit and loss as they are incurred. This aligns with standard audit practices for variable-only arrangements, ensuring compliant reporting for the CFO.",
         "",
         "**Conclusion:** The arrangement **does not contain a lease** under Ind AS 116.",
         "",
-        "**Reason:** The agreement specifies variable-only payments based on usage or output with no minimum guaranteed or in-substance fixed lease payments.",
+        "**Reason:** The agreement specifies variable lease payments, and an assessment confirms there are no in-substance fixed lease payments or minimum guaranteed amounts.",
         "",
         "**Final Opinion:** Recognition of a Right-of-Use Asset and Lease Liability is **not required**.",
       ].join("\n"),
@@ -92,11 +92,11 @@ export function computeFinalClassification(
       recommendation: "Exempt Lease",
       recommendationNarrative: [
         "### Executive Summary",
-        "We have evaluated the uploaded contract under the Ind AS 116 lease accounting standard. The contract contains a lease, but it qualifies for the Low-Value Asset exemption because the underlying value of the asset when new is below the established threshold of ₹3,00,000 / $5,000. Under Ind AS 116, lessees can elect not to recognize right-of-use assets and lease liabilities for low-value leases. Choosing this exemption allows the lessee to recognize the lease payments as an expense on a straight-line basis over the lease term, simplifying the accounting process and reducing balance sheet complexity. This is highly recommended for administrative and office equipment assets that meet the threshold, as it avoids unnecessary capitalization and auditing overhead.",
+        "We have evaluated the uploaded contract under the Ind AS 116 lease accounting standard. The contract contains a lease, but it qualifies for the Low-Value Asset exemption based on management confirmation that the underlying asset is of low value. Under Ind AS 116, lessees can elect not to recognize right-of-use assets and lease liabilities for low-value leases. Choosing this exemption allows the lessee to recognize the lease payments as an expense on a straight-line basis over the lease term, simplifying the accounting process and reducing balance sheet complexity. This is recommended for qualifying low-value assets to avoid unnecessary capitalization and auditing overhead.",
         "",
         "**Conclusion:** The arrangement **contains an exempt lease** under Ind AS 116.",
         "",
-        "**Reason:** The lease qualifies for the Low-Value Exemption (underlying value < ₹3,00,000 / $5,000).",
+        "**Reason:** The lease qualifies for the Low-Value Exemption based on management confirmation.",
         "",
         "**Final Opinion:** Capitalization of a Right-of-Use Asset and Lease Liability is **optional/not required**.",
       ].join("\n"),
@@ -222,6 +222,7 @@ export async function reevaluateRecommendationWithAI(
       - You must write in the tone and language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO or corporate finance team.
       - DO NOT use generic AI filler words or transition phrases (e.g., "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover...").
       - DO NOT use textbook definitions of Ind AS 116 criteria (e.g. avoid repeating "substantive substitution rights", "identified asset", "economic benefits" multiple times). State only observations of fact and direct accounting conclusions.
+      - VARIABLE LEASE PAYMENTS & IN-SUBSTANCE FIXED RENT MANDATE: In case variable lease payments are mentioned in the agreement, your assessment narrative MUST explicitly state whether there is any in-substance fixed lease rent or minimum guaranteed payment mentioned in the agreement.
       - Keep the explanation extremely brief, concise, and direct.
       - REFERENCING RULE: Refer to accounting standard ONLY as "Ind AS 116". DO NOT include question numbers (e.g. Q1-Q9, Question 1), paragraph numbers/citations (e.g. Para B14-B19), specific example names/numbers, or internal file locations/logic names.
       - Format "recommendationNarrative" exactly like a CA's Final Assessment in Markdown:
@@ -328,6 +329,7 @@ export async function regenerateRecommendationWithAIAndInputs(
       - You must write in the tone and language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO or corporate finance team.
       - DO NOT use generic AI filler words or transition phrases.
       - DO NOT use textbook definitions of Ind AS 116 criteria. State only observations of fact, management inputs, and direct accounting conclusions.
+      - VARIABLE LEASE PAYMENTS & IN-SUBSTANCE FIXED RENT MANDATE: In case variable lease payments are mentioned in the agreement, your assessment narrative MUST explicitly state whether there is any in-substance fixed lease rent or minimum guaranteed payment mentioned in the agreement.
       - Format "recommendationNarrative" exactly like a CA's Final Assessment in Markdown:
         ### Executive Summary
         [A detailed professional Executive Summary paragraph of 120 to 180 words summarizing the agreement scope, key Ind AS 116 audit considerations, how management's comments/inputs affect or clarify the business context, and classification rationale.]
@@ -386,6 +388,8 @@ export async function startLeaseAssessment(
     - Tone: Write in the language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO.
     - Style: Be extremely brief, concise, and direct. Refer to accounting standard ONLY as "Ind AS 116". DO NOT include question numbers (e.g. Q1-Q9, Question 1), paragraph numbers/citations (e.g. Para B14-B19), specific example names/numbers, or internal file locations.
     - Jargon: DO NOT use generic AI transition phrases (e.g. "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover..."). State only direct contractual observations.
+    - VARIABLE LEASE PAYMENTS & IN-SUBSTANCE FIXED RENT MANDATE: In case there are variable lease payments mentioned in the agreement, AI must assess whether there is any in-substance fixed lease rent mentioned in the agreement and explicitly include this evaluation in the qualitative recommendationNarrative and question explanations.
+    - LOW-VALUE ASSET MANDATE: In case AI assesses that a leased asset could qualify as a low-value asset, AI must ONLY ask management whether to consider that asset as a low-value asset or not (e.g. options: ["Yes", "No"]). AI MUST NOT mention, specify, or refer to any monetary threshold (such as ₹3,00,000 or $5,000) when identifying, asking about, or describing the low-value asset.
 
     Your execution steps:
     1. PHASE 1 (AGREEMENT MODEL): Read the agreement and extract raw document facts (agreementType, lessorName, lesseeName, assetDescription, paymentClause, paymentType, leaseTerm, commencementDate, expiryDate, lockInPeriod, noticePeriod, supplierRelocationClause). Do not perform any accounting classification.
@@ -410,7 +414,7 @@ export async function startLeaseAssessment(
          - Avoid generating generic questions. Tailor the \`promptText\`, \`aiUnderstanding\`, and \`whyAsked\` to the specific facts, names, and assets mentioned in the agreement.
        - Dynamic options logic:
          - You must dynamically generate the response choices (\`options\`) to perfectly match the context, range, or nature of the question instead of defaulting only to "Yes" and "No". For example:
-           * If asking about low-value thresholds: \`["Less than INR 3,00,000", "More than INR 3,00,000"]\` or specific relevant ranges.
+           * If asking about low-value asset classification: \`["Yes", "No"]\` (CRITICAL: DO NOT specify or mention any monetary threshold, amount, or currency value).
            * If asking about lease duration: \`["12 months or less", "More than 12 months"]\`
            * If asking about payments: \`["Fixed Payments", "Variable Payments", "Both"]\`
            * If asking standard confirmation: \`["Yes", "No"]\`
@@ -668,24 +672,157 @@ export const approveController = async (req: Request, res: Response) => {
     }
 
     console.log(
-      `[Assessment Engine] Running financial data extraction for ${agreementId}...`,
+      `[Assessment Engine] Running financial gap analysis for ${agreementId}...`,
     );
-    const financialData = await performFinancialExtractionDirect(
-      assessment.rawText,
+
+    // 1. Retrieve dynamic RAG context
+    const categories = ["EXTRACTION_RULES", "COMPANY_RULES", "LEASE_TERM"];
+    const requiredFiles = getRequiredFilesForIntents(categories);
+    const scoredChunks = await retrieveScoredChunks(
+      "Identify lease financial parameters, rent, payments, lock-in, GST, ROU adjustments, initial direct costs, incentives",
+      categories,
+      requiredFiles,
+      geminiApiKey,
+    );
+    const { selected: rerankedChunks } = rerankCandidates(
+      scoredChunks,
+      requiredFiles,
+    );
+    const ragContext = assembleContext(rerankedChunks, []);
+
+    // 2. Perform Gap Analysis using Gemini
+    const gapAnalysisPrompt = `
+      You are a senior Chartered Accountant (CA) auditing lease contracts under Ind AS 116.
+      You are performing a Financial Gap Analysis to identify if any vital information is missing or needs clarification before executing final financial extraction.
+
+      CRITICAL SYSTEM COMPLIANCE RULES (RAG Context):
+      ${ragContext}
+
+      Original Lease Text:
+      ${assessment.rawText}
+
+      Qualitative Assessment Context (Stage 1 Output - TREAT THESE AS CONFIRMED FACTS):
+      - Recommendation: ${assessment.recommendation}
+      - Status: ${status}
+      - Confirmed Qualitative Checkpoint Answers:
+      ${JSON.stringify(
+        assessment.questions.map((q) => ({
+          questionId: q.questionId,
+          title: q.title,
+          answer: q.answer,
+          explanation: q.explanation,
+        })),
+        null,
+        2,
+      )}
+
+      YOUR INSTRUCTIONS:
+      1. Perform a gap analysis of the Lease Agreement under Ind AS 116 based on the provided RAG guidelines and qualitative assessment context.
+      2. **Strict Fact Precedence:** Treat all confirmed answers from Stage 1 as established facts. DO NOT ask questions that have already been resolved (e.g. do not ask if renewal option is certain if answered YES).
+      3. Identify if any additional facts are missing or require clarification from management. Focus strictly on these points:
+         - **GST Applicability:** Ask management: "Should GST be included in the rent amount for Ind AS 116 calculation, and if so, what is the applicable GST rate?"
+           FOR THE GST QUESTION, YOU MUST PROVIDE EXACTLY THESE TWO OPTIONS: ["Yes, 18%", "No, GST should not be included"].
+         - **Initial Direct Costs:** If not mentioned in the agreement, ask management: "Were there any initial direct costs incurred by the lessee at the initiation of the agreement?"
+         - **Lessee Unilateral Termination Right:** If only the lessee has the right to terminate, ask: "Within what period does the lessee expect to terminate the lease?"
+         - **Variable Index Rate Value:** If rent depends on index/rate, and commencement value is missing, ask.
+         - **Residual Value Guarantees:** If RVG is mentioned but expected amount is missing, ask.
+         - **Purchase Option Price:** If purchase option is certain but price is missing, ask.
+         - **In-substance Fixed Payments:** If mentioned but the amount is unclear, ask.
+         - **Lease Incentives:** If mentioned but date/receipt is unclear, ask.
+      4. Generate clarification questions ONLY for facts that are missing or require business decision. If a fact is explicitly mentioned in the text or already resolved, do NOT ask.
+      5. Options logic: For GST Applicability, strictly provide options: ["Yes, 18%", "No, GST should not be included"]. For Direct Costs: ["Yes, initial direct costs incurred", "No initial direct costs incurred"].
+      6. Return a JSON object matching this schema:
+      {
+        "clarificationRequired": boolean,
+        "questions": [
+          {
+            "questionId": "string (e.g. FQ_gst, FQ_directcost, FQ_purchase_price)",
+            "title": "string (short title)",
+            "confidence": number,
+            "answer": "string | null",
+            "explanation": "string (concise CA-grade observation of why we are asking)",
+            "promptText": "string (clear, natural language question asked to management)",
+            "options": ["string"],
+            "aiUnderstanding": "string (what the AI identified in the contract)",
+            "whyAsked": "string (why management confirmation is required)"
+          }
+        ]
+      }
+      
+      Respond strictly with raw JSON, no markdown formatting or backticks.
+    `;
+
+    const { text: gapResponse } = await callGemini(
       geminiApiKey,
       geminiModel,
+      gapAnalysisPrompt,
+      true,
     );
+    const parsedGap = JSON.parse(cleanJsonResponse(gapResponse));
 
-    assessment.financialDataExtracted = true;
-    await assessment.save();
+    if (parsedGap.clarificationRequired && parsedGap.questions && parsedGap.questions.length > 0) {
+      console.log(`[Assessment Engine] Financial clarifications required for ${agreementId}. Asking ${parsedGap.questions.length} questions.`);
+      const questions = (parsedGap.questions || []).map((q: any, idx: number) => {
+        let options = q.options || ["Yes", "No"];
+        const isGstQuestion =
+          (q.questionId || "").toLowerCase().includes("gst") ||
+          (q.title || "").toLowerCase().includes("gst") ||
+          (q.promptText || "").toLowerCase().includes("gst");
+        if (isGstQuestion) {
+          options = ["Yes, 18%", "No, GST should not be included"];
+        }
 
-    return res.status(200).json({
-      status,
-      financialData: {
-        ...financialData,
-        agreementId,
-      },
-    });
+        return {
+          questionId: q.questionId || `FQ_${idx + 1}`,
+          title: q.title || "Clarification",
+          status: "pending",
+          answer: null,
+          confidence: q.confidence !== undefined ? q.confidence : 0.5,
+          explanation: q.explanation || "",
+          promptText: q.promptText || "",
+          options,
+          aiUnderstanding: q.aiUnderstanding || "",
+          whyAsked: q.whyAsked || "",
+        };
+      });
+      
+      assessment.financialClarifications = {
+        questions,
+        status: "pending",
+        resolvedFacts: {}
+      };
+      
+      await assessment.save();
+
+      return res.status(200).json({
+        status: "pending_financial_clarifications",
+        financialClarifications: assessment.financialClarifications,
+      });
+    } else {
+      console.log(`[Assessment Engine] No clarifications required for ${agreementId}. Proceeding directly to final extraction.`);
+      assessment.financialClarifications = {
+        questions: [],
+        status: "completed",
+        resolvedFacts: {}
+      };
+
+      const financialData = await performFinancialExtractionWithAnswersDirect(
+        assessment,
+        geminiApiKey,
+        geminiModel,
+      );
+
+      assessment.financialDataExtracted = true;
+      await assessment.save();
+
+      return res.status(200).json({
+        status: "complete",
+        financialData: {
+          ...financialData,
+          agreementId,
+        },
+      });
+    }
   } catch (error: any) {
     console.error("Error in approveController:", error);
     return res
@@ -752,6 +889,230 @@ export const regenerateController = async (req: Request, res: Response) => {
     return res.status(200).json(assessment);
   } catch (error: any) {
     console.error("Error in regenerateController:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+};
+
+// Helper function to extract financial parameters while enforcing qualitative & clarifications answers
+export async function performFinancialExtractionWithAnswersDirect(
+  assessment: any,
+  geminiApiKey: string,
+  geminiModel: string,
+): Promise<any> {
+  const resolvedFacts = assessment.financialClarifications.resolvedFacts || {};
+  let factsText = "";
+  if (resolvedFacts instanceof Map) {
+    for (const [key, val] of resolvedFacts.entries()) {
+      factsText += `- ${key}: ${val}\n`;
+    }
+  } else {
+    for (const key of Object.keys(resolvedFacts)) {
+      factsText += `- ${key}: ${resolvedFacts[key]}\n`;
+    }
+  }
+
+  // Load knowledge base rules (EXTRACTION_RULES, LEASE_TERM, COMPANY_RULES)
+  const categories = ["EXTRACTION_RULES", "COMPANY_RULES", "LEASE_TERM"];
+  const requiredFiles = getRequiredFilesForIntents(categories);
+  const scoredChunks = await retrieveScoredChunks(
+    "Extract lease parameters, rent, deposits, lock-in, GST, direct costs, lease term",
+    categories,
+    requiredFiles,
+    geminiApiKey,
+  );
+  const { selected: rerankedChunks } = rerankCandidates(
+    scoredChunks,
+    requiredFiles,
+  );
+  const ragContext = assembleContext(rerankedChunks, []);
+
+  const extractionPrompt = `
+    You are an expert lease data normalization engine. You are performing the final financial extraction for a lease agreement.
+    You must extract standard lease parameters under Ind AS 116.
+    
+    CRITICAL SYSTEM COMPLIANCE RULES (RAG Context):
+    ${ragContext}
+
+    Original Lease Document Text:
+    ${assessment.rawText}
+
+    Qualitative Assessment Context (Stage 1 Output - TREAT AS ESTABLISHED FACTS):
+    - Final Recommendation: ${assessment.recommendation}
+    - Confirmed Checkpoint Answers:
+    ${JSON.stringify(
+      assessment.questions.map((q: any) => ({
+        questionId: q.questionId,
+        title: q.title,
+        answer: q.answer,
+      })),
+      null,
+      2,
+    )}
+
+    CONFIRMED FINANCIAL CLARIFICATIONS (Stage 2 Output - TREAT AS ESTABLISHED FACTS):
+    ${factsText || "[No financial clarifications were required]"}
+
+    CRITICAL EXTRACTION DIRECTIONS:
+    1. **Precedence Rule:** Confirmed answers from Stage 1 and Stage 2 always take absolute precedence over values inferred from the text. Never overwrite them.
+    2. **GST Applicability:** If GST is confirmed as applicable, compute the total rent amount including GST (e.g. if base rent is 100,000 and GST is 18%, rentAmount must be 118000).
+    3. **Initial Direct Costs:** Apply the initial direct costs to ROU adjustments. If confirmed as none, do not include.
+    4. **Lease Working Period:** Use the lease term and renewal option facts established in Stage 1 and Stage 2 to set start and end dates.
+    5. **Lock-In Period:** Set to the exact same period as the Lease Working Period.
+    6. **Frequency of Rent Payment:** If not mentioned, default to "monthly".
+    7. **Frequencies:** Rent Payment Frequency default "monthly", Interest Calculation Frequency always "monthly".
+    8. **Data Provenance:** For each extracted field, determine the source of the value.
+       - The source MUST be one of: "Agreement" (extracted from text), "Management Clarification" (from Stage 1 or Stage 2 confirmations), or "Assessment Reasoning" (computed based on compliance logic).
+       - Provide the confidence score (High, Medium, Low) and the source text snippet when from the agreement.
+
+    Return the output as a valid JSON object matching exactly this schema, without any markdown formatting, backticks, or extra text:
+    {
+      "lessorName": "string or null",
+      "natureOfLease": "Type of lease (One of: 'Leasehold land', 'Building', 'Warehouse', 'Plant and Machinery', 'Vehicle', 'Office Equipments', 'Computer and Peripherals', 'Furniture and fixtures', 'Security Deposit', 'Other' or null)",
+      "leasePeriod": { "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" },
+      "leaseWorkingPeriod": { "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" },
+      "lockingPeriod": { "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" },
+      "rentPaymentType": "Either 'Advance Payment' or 'Arrear Payment' or null",
+      "rentPaymentFrequency": "One of: 'monthly', 'quarterly', 'semi-annual', 'annual' or null",
+      "rentAmount": number,
+      "rentPaymentDate": "string or number",
+      "securityDeposit": number,
+      "discountingRates": [
+        { "dateRange": ["YYYY-MM-DD", "YYYY-MM-DD"], "rate": number }
+      ],
+      "systematicEscalations": [
+        { "dateRange": "YYYY-MM-DD", "frequency": "annual", "percentage": number }
+      ],
+      "adhocEscalations": [
+        { "dateRange": ["YYYY-MM-DD", "YYYY-MM-DD"], "frequency": "monthly", "amount": number }
+      ],
+      "rentFreePeriods": [
+        { "dateRange": ["YYYY-MM-DD", "YYYY-MM-DD"], "percentage": number }
+      ],
+      "confidence": number,
+      "provenance": {
+        "lessorName": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "natureOfLease": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "leasePeriod": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "leaseWorkingPeriod": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "lockingPeriod": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "rentPaymentType": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "rentPaymentFrequency": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "rentAmount": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "rentPaymentDate": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "securityDeposit": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" }
+      }
+    }
+  `;
+
+  const { text: responseText } = await callGemini(
+    geminiApiKey,
+    geminiModel,
+    extractionPrompt,
+    true,
+  );
+
+  const parsedJson = JSON.parse(cleanJsonResponse(responseText));
+
+  // Normalize working period & lock-in
+  if (parsedJson.leasePeriod) {
+    if (!parsedJson.leaseWorkingPeriod) {
+      parsedJson.leaseWorkingPeriod = parsedJson.leasePeriod;
+    }
+    if (!parsedJson.lockingPeriod) {
+      parsedJson.lockingPeriod = parsedJson.leaseWorkingPeriod;
+    }
+  }
+
+  return parsedJson;
+}
+
+// Controller for POST /api/v1/agreement-intelligence/confirm-financial
+export const confirmFinancialController = async (req: Request, res: Response) => {
+  try {
+    const { agreementId, questionId, value } = req.body;
+    if (!agreementId || !questionId || value === undefined) {
+      return res
+        .status(400)
+        .json({ error: "agreementId, questionId, and value are required" });
+    }
+
+    const assessment = await LeaseAssessment.findOne({ agreementId });
+    if (!assessment) {
+      return res
+        .status(404)
+        .json({ error: "Lease assessment session not found" });
+    }
+
+    // Update dynamic question
+    const qIndex = assessment.financialClarifications.questions.findIndex(
+      (q) => q.questionId === questionId,
+    );
+    if (qIndex === -1) {
+      return res
+        .status(400)
+        .json({ error: `Question ${questionId} not found in clarifications` });
+    }
+
+    assessment.financialClarifications.questions[qIndex].answer = value;
+    assessment.financialClarifications.questions[qIndex].status = "confirmed";
+    assessment.financialClarifications.questions[qIndex].confidence = 1.0;
+
+    const title = assessment.financialClarifications.questions[qIndex].title;
+    
+    // Store resolved fact
+    if (!assessment.financialClarifications.resolvedFacts) {
+      assessment.financialClarifications.resolvedFacts = {};
+    }
+    
+    if (assessment.financialClarifications.resolvedFacts instanceof Map) {
+      assessment.financialClarifications.resolvedFacts.set(title, value);
+    } else {
+      assessment.financialClarifications.resolvedFacts[title] = value;
+    }
+
+    // Mark modifications so Mongoose knows resolvedFacts Map/Object changed
+    assessment.markModified('financialClarifications.resolvedFacts');
+
+    const remainingPending = assessment.financialClarifications.questions.filter(
+      (q) => q.status === "pending",
+    ).length;
+
+    const geminiApiKey = process.env.GEMINI_API_KEY as string;
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+    if (remainingPending === 0) {
+      console.log(
+        `[Assessment Engine] All financial clarifications confirmed for ${agreementId}. Triggering final extraction...`,
+      );
+      assessment.financialClarifications.status = "completed";
+
+      const financialData = await performFinancialExtractionWithAnswersDirect(
+        assessment,
+        geminiApiKey,
+        geminiModel,
+      );
+
+      assessment.financialDataExtracted = true;
+      await assessment.save();
+
+      return res.status(200).json({
+        status: "complete",
+        financialData: {
+          ...financialData,
+          agreementId,
+        },
+      });
+    } else {
+      await assessment.save();
+      return res.status(200).json({
+        status: "pending_financial_clarifications",
+        financialClarifications: assessment.financialClarifications,
+      });
+    }
+  } catch (error: any) {
+    console.error("Error in confirmFinancialController:", error);
     return res
       .status(500)
       .json({ error: "Internal server error", details: error.message });

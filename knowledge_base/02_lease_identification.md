@@ -860,6 +860,9 @@ Step 3 : Low-value leases
 
 “B8 Examples of low-value underlying assets can include tablet and personal computers, small items of office furniture and telephones.”
 
+Company Rule for Low-Value Assets:
+In case AI assesses that a leased asset could be a low-value asset, the AI must ONLY ask management whether to consider that asset as a low-value asset or not (e.g., options: ["Yes", "No"]). The AI MUST NOT mention or refer to any monetary threshold to identify or describe the low-value asset.
+
 Based on the above guidance, the following points need to be borne in mind in making an assessment as to whether an underlying asset of a lease is of low value:
 
 (i) Such assessment is performed on an absolute basis and is independent of the size, nature or circumstances of the lessee.

@@ -13,10 +13,12 @@ export function getRequiredFilesForIntents(categories: string[]): string[] {
         break;
       case "LEASE_TERM":
         fileSet.add("03_lease_term.md");
+        fileSet.add("13_rent_form_rules.md");
         break;
       case "COMMENCEMENT_DATE":
         fileSet.add("03_lease_term.md");
         fileSet.add("07_extraction_rules.md");
+        fileSet.add("13_rent_form_rules.md");
         break;
       case "DISCOUNT_RATE":
         fileSet.add("04_discount_rate.md");
@@ -31,6 +33,7 @@ export function getRequiredFilesForIntents(categories: string[]): string[] {
         break;
       case "EXTRACTION_RULES":
         fileSet.add("07_extraction_rules.md");
+        fileSet.add("13_rent_form_rules.md");
         break;
       case "VALIDATION":
         fileSet.add("08_confidence_rules.md");

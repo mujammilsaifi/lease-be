@@ -13,6 +13,12 @@ export interface ILeaseAssessmentQuestion {
   whyAsked?: string;
 }
 
+export interface IFinancialClarification {
+  questions: ILeaseAssessmentQuestion[];
+  status: "pending" | "completed";
+  resolvedFacts: Record<string, any>;
+}
+
 export interface ILeaseAssessment extends Document {
   agreementId: string; // AGR-...
   fileName: string;
@@ -27,6 +33,7 @@ export interface ILeaseAssessment extends Document {
   status: "in_progress" | "accepted_lease" | "accepted_service" | "overridden";
   overrideReason?: string;
   financialDataExtracted: boolean;
+  financialClarifications: IFinancialClarification;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +78,11 @@ const LeaseAssessmentSchema = new Schema(
     },
     overrideReason: { type: String },
     financialDataExtracted: { type: Boolean, default: false },
+    financialClarifications: {
+      questions: { type: [LeaseAssessmentQuestionSchema], default: [] },
+      status: { type: String, enum: ["pending", "completed"], default: "completed" },
+      resolvedFacts: { type: Map, of: Schema.Types.Mixed, default: {} }
+    }
   },
   { timestamps: true }
 );
