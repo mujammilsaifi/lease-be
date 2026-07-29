@@ -150,8 +150,8 @@ export function transformToQ1Q9Schema(
       confidence:
         q.confidence !== undefined ? q.confidence : isPending ? 0.5 : 1.0,
       explanation: q.explanation || "",
-      promptText: q.promptText || "",
-      options: q.options || ["Yes", "No"],
+      promptText: q.promptText || q.title || q.explanation || "Clarification Question",
+      options: (Array.isArray(q.options) && q.options.length > 0) ? q.options : ["Yes", "No"],
       aiUnderstanding: q.aiUnderstanding || "",
       whyAsked: q.whyAsked || "",
     } as ILeaseAssessmentQuestion;
@@ -763,7 +763,7 @@ export const approveController = async (req: Request, res: Response) => {
     if (parsedGap.clarificationRequired && parsedGap.questions && parsedGap.questions.length > 0) {
       console.log(`[Assessment Engine] Financial clarifications required for ${agreementId}. Asking ${parsedGap.questions.length} questions.`);
       const questions = (parsedGap.questions || []).map((q: any, idx: number) => {
-        let options = q.options || ["Yes", "No"];
+        let options = (Array.isArray(q.options) && q.options.length > 0) ? q.options : undefined;
         const isGstQuestion =
           (q.questionId || "").toLowerCase().includes("gst") ||
           (q.title || "").toLowerCase().includes("gst") ||
@@ -779,7 +779,7 @@ export const approveController = async (req: Request, res: Response) => {
           answer: null,
           confidence: q.confidence !== undefined ? q.confidence : 0.5,
           explanation: q.explanation || "",
-          promptText: q.promptText || "",
+          promptText: q.promptText || q.title || q.explanation || "Financial Clarification Required",
           options,
           aiUnderstanding: q.aiUnderstanding || "",
           whyAsked: q.whyAsked || "",

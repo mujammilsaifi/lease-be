@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import fs from "fs";
+import path from "path";
 import { emitProgress } from "./extractProgressController";
 import { startLeaseAssessment } from "../agreement-intelligence/assessmentController";
+import { convertDocToPdf } from "../../services/docxConverter";
 
 async function performOCR(
   filePath: string,
@@ -159,12 +161,6 @@ const SUPPORTED_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-async function extractTextFromWord(filePath: string): Promise<string> {
-  const mammoth = await import("mammoth");
-  const result = await mammoth.extractRawText({ path: filePath });
-  return result.value || "";
-}
-
 // 1. Export helper to call Gemini to extract financial data fields from text (Pass 1 + Pass 2)
 export async function performFinancialExtractionDirect(
   processedText: string,
@@ -308,6 +304,7 @@ export async function performFinancialExtractionDirect(
 
 // 2. Main upload controller: extracts text and runs first-pass assessment (instead of financial extraction)
 export const extractPdfController = async (req: Request, res: Response) => {
+  let convertedPdfPath = "";
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -331,85 +328,91 @@ export const extractPdfController = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "File exceeds 15MB limit" });
     }
 
-    const fileBuffer = fs.readFileSync(req.file.path);
     const trackingId = req.body.trackingId;
     const isPdf = fileMime === "application/pdf" || fileExt === "pdf";
+
+    if (!isPdf) {
+      if (trackingId) {
+        emitProgress(trackingId, {
+          stage: "quality_check",
+          percentage: 15,
+          message: "Pre-processing and converting Word document to PDF...",
+        });
+      }
+      try {
+        convertedPdfPath = await convertDocToPdf(req.file.path, fileExt);
+        console.log("[Converter] Converted file successfully to:", convertedPdfPath);
+
+        // Keep a copy of the converted PDF for reference in non-production environments
+        if (process.env.NODE_ENV !== "production") {
+          const debugPdfPath = path.join(path.dirname(req.file.path), `${req.file.originalname}.converted.pdf`);
+          try {
+            fs.copyFileSync(convertedPdfPath, debugPdfPath);
+            console.log(`[Debug] Converted PDF saved for reference at: ${debugPdfPath}`);
+          } catch (err) {
+            console.error("Failed to save debug copy of converted PDF:", err);
+          }
+        }
+      } catch (wordErr: any) {
+        throw new Error(
+          `Failed to pre-process Word document: ${wordErr.message}`,
+        );
+      }
+    }
+
+    const targetFilePath = isPdf ? req.file.path : convertedPdfPath;
+    const fileBuffer = fs.readFileSync(targetFilePath);
 
     if (trackingId) {
       emitProgress(trackingId, {
         stage: "extracting",
-        percentage: 10,
+        percentage: 20,
         message: "Extracting text from document...",
       });
     }
 
     let extractedText = "";
-
-    if (isPdf) {
-      let pdfData;
-      let parser;
-      try {
-        const { PDFParse } = await import("pdf-parse");
-        parser = new PDFParse({ data: fileBuffer });
-        pdfData = await parser.getText();
-      } catch (parseErr: any) {
-        throw new Error(`Failed to parse digital PDF: ${parseErr.message}`);
-      } finally {
-        if (parser) {
-          try {
-            await parser.destroy();
-          } catch {}
-        }
+    let pdfData;
+    let parser;
+    try {
+      const { PDFParse } = await import("pdf-parse");
+      parser = new PDFParse({ data: fileBuffer });
+      pdfData = await parser.getText();
+    } catch (parseErr: any) {
+      throw new Error(`Failed to parse digital PDF: ${parseErr.message}`);
+    } finally {
+      if (parser) {
+        try {
+          await parser.destroy();
+        } catch {}
       }
+    }
 
-      extractedText = pdfData.text || "";
+    extractedText = pdfData.text || "";
 
-      const numPages = pdfData.total || 1;
-      const avgCharsPerPage = extractedText.trim().length / numPages;
+    const numPages = pdfData.total || 1;
+    const avgCharsPerPage = extractedText.trim().length / numPages;
 
-      if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
-        console.log(
-          `Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(
-            avgCharsPerPage,
-          )} chars/page). Triggering OCR...`,
-        );
-        if (trackingId) {
-          emitProgress(trackingId, {
-            stage: "quality_check",
-            percentage: 20,
-            message: "Scanned document detected. Starting OCR...",
-          });
-        }
-        extractedText = await performOCR(req.file.path, trackingId);
-      } else {
-        if (trackingId) {
-          emitProgress(trackingId, {
-            stage: "quality_check",
-            percentage: 20,
-            message: "Text detected successfully.",
-          });
-        }
+    if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
+      console.log(
+        `Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(
+          avgCharsPerPage,
+        )} chars/page). Triggering OCR...`,
+      );
+      if (trackingId) {
+        emitProgress(trackingId, {
+          stage: "quality_check",
+          percentage: 30,
+          message: "Scanned layout detected. Starting OCR...",
+        });
       }
+      extractedText = await performOCR(targetFilePath, trackingId);
     } else {
       if (trackingId) {
         emitProgress(trackingId, {
           stage: "quality_check",
-          percentage: 15,
-          message: "Extracting text from Word document...",
-        });
-      }
-      try {
-        extractedText = await extractTextFromWord(req.file.path);
-      } catch (wordErr: any) {
-        throw new Error(
-          `Failed to extract text from Word document: ${wordErr.message}`,
-        );
-      }
-      if (trackingId) {
-        emitProgress(trackingId, {
-          stage: "quality_check",
-          percentage: 20,
-          message: "Text extracted from Word document.",
+          percentage: 30,
+          message: "Text detected successfully.",
         });
       }
     }
@@ -433,13 +436,19 @@ export const extractPdfController = async (req: Request, res: Response) => {
       });
     }
 
-    // Run first-pass qualitative Lease Assessment (instead of financial extraction)
+    // Run first-pass qualitative Lease Assessment
     const assessment = await startLeaseAssessment(
       req.file.originalname,
       extractedText,
       geminiApiKey,
       geminiModel,
     );
+
+    // If there is a warning (e.g. legacy doc), append it to assessment response
+    const assessmentObj: any = assessment.toObject ? assessment.toObject() : assessment;
+    if (fileExt === "doc") {
+      assessmentObj.warning = "Legacy DOC files may lose formatting. For best accuracy, please upload DOCX or PDF.";
+    }
 
     if (trackingId) {
       emitProgress(trackingId, {
@@ -449,7 +458,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(200).json(assessment);
+    return res.status(200).json(assessmentObj);
   } catch (error: any) {
     console.error("Error extracting lease data from document:", error);
     return res.status(500).json({
@@ -463,6 +472,14 @@ export const extractPdfController = async (req: Request, res: Response) => {
         console.log("Successfully cleaned up temp file:", req.file.path);
       } catch (cleanupErr) {
         console.error("Failed to clean up temp file:", cleanupErr);
+      }
+    }
+    if (convertedPdfPath && fs.existsSync(convertedPdfPath)) {
+      try {
+        fs.unlinkSync(convertedPdfPath);
+        console.log("Successfully cleaned up converted PDF:", convertedPdfPath);
+      } catch (cleanupErr) {
+        console.error("Failed to clean up converted PDF:", cleanupErr);
       }
     }
   }

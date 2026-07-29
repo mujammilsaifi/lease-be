@@ -6,14 +6,32 @@
 - `leasePeriod` (object): Start and end dates.
   - `start` (string YYYY-MM-DD)
   - `end` (string YYYY-MM-DD)
-- `leaseWorkingPeriod` (object): Same structure as leasePeriod. If not specified, defaults to leasePeriod.
-- `lockingPeriod` (object): Same structure as leasePeriod. If not specified, defaults to leaseWorkingPeriod.
-- `rentPaymentType` (string | null): `'Advance Payment'` or `'Arrear Payment'`.
-- `rentPaymentFrequency` (string | null): `'monthly'`, `'quarterly'`, `'semi-annual'`, `'annual'`.
-- `rentAmount` (number): Rental amount per frequency.
-- `rentPaymentDate` (number | string): Date of payment, e.g., `1` to `31` or `'endOfPeriod'`.
-- `securityDeposit` (number): Security deposit amount.
-- `discountingRates` (array): List of discount rates with range.
-- `systematicEscalations` (array): Escalation percent with start date.
-- `adhocEscalations` (array): Specific rent amounts per date range.
-- `rentFreePeriods` (array): Rent-free waivers with date range and percentage.
+- `leaseWorkingPeriod` (object): Same structure as `leasePeriod`. Includes renewable/extension periods if applicable. If not specified, defaults to `leasePeriod`.
+- `lockingPeriod` (object): Same structure as `leasePeriod`. Must be set to the exact same duration as `leaseWorkingPeriod`.
+- `rentPaymentType` (string | null): `'Advance Payment'` or `'Arrear Payment'`. Defaults to `'Advance Payment'`.
+- `frequencyForInterestCalculation` (string | null): Always `'Monthly'`.
+- `rentPaymentFrequency` (string | null): `'Monthly'`, `'Quarterly'`, `'Semi-Annual'`, `'Yearly'`. Defaults to `'Monthly'`.
+- `rentAmount` (number): Base rental amount per frequency (adjusted for GST if confirmed by management).
+- `rentPaymentDate` (number | string): Date of payment, e.g., `1` to `31` or `'endOfPeriod'`. If missing, ask management.
+- `securityDeposit` (number | null): Interest-free security deposit amount.
+- `discountingRates` (array): List of discount rates with date ranges. If missing, ask management. Each object contains:
+  - `dateRange` (array of 2 strings YYYY-MM-DD: `[start, end]`)
+  - `rate` (number)
+- `rentFreePeriods` (array): Rent-free waivers with date ranges and percentage. Each object contains:
+  - `dateRange` (array of 2 strings YYYY-MM-DD: `[start, end]`)
+  - `percentage` (number, e.g. `50` for 50%)
+- `systematicEscalations` (array): Percentage escalations. Each object contains:
+  - `dateRange` (string YYYY-MM-DD: initiation date)
+  - `frequency` (string: `'Monthly'`, `'Quarterly'`, `'Semi-Annual'`, `'Yearly'`)
+  - `percentage` (number, e.g. `5` or `10`)
+- `adhocEscalations` (array): Specific fixed rent amounts per date range. Each object contains:
+  - `dateRange` (array of 2 strings YYYY-MM-DD: `[start, end]`)
+  - `frequency` (string: inherits `rentPaymentFrequency`)
+  - `amount` (number)
+- `rouAdjustments` (array): Right of use adjustments for lease incentives (negative amount) and initial direct costs (positive amount). Each object contains:
+  - `adjustmentDate` (string YYYY-MM-DD)
+  - `adjustmentAmount` (number)
+- `otherLeaseInformations` (object):
+  - `extensionOption` (boolean)
+  - `purchaseOption` (boolean)
+  - `terminationOption` (boolean)
