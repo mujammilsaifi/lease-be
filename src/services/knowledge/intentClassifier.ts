@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { callGemini, cleanJsonResponse } from "../../controllers/agreement-intelligence/geminiService";
 
 export interface ChatMessage {
   id: string;
@@ -19,8 +19,6 @@ export async function classifyIntent(
   history: ChatMessage[],
   apiKey: string,
 ): Promise<IntentResult> {
-  const ai = new GoogleGenAI({ apiKey });
-
   // Format history as a conversation transcript
   const formattedHistory = history
     .filter((msg) => msg.id !== "welcome") // skip welcome message
@@ -63,22 +61,15 @@ export async function classifyIntent(
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction: systemInstructions,
-        responseMimeType: "application/json",
-        temperature: 0,
-      },
-    });
+    const { text } = await callGemini(
+      apiKey,
+      "gemini-2.5-flash",
+      prompt,
+      true,
+      systemInstructions,
+    );
 
-    const text = response.text?.trim() || "";
-    // Clean JSON markdown blocks if any
-    const cleanJsonText = text
-      .replace(/^```json\s*/i, "")
-      .replace(/```$/, "")
-      .trim();
+    const cleanJsonText = cleanJsonResponse(text);
     const result = JSON.parse(cleanJsonText) as IntentResult;
 
     if (!Array.isArray(result.categories)) {
