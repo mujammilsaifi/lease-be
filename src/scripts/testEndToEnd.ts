@@ -23,6 +23,38 @@ if (!MONGO_URI || !API_KEY) {
 }
 
 // Simple PDF parser function matching local project configuration
+async function rotateImage(
+  imageBuffer: Buffer,
+  angleDegrees: number,
+): Promise<Buffer> {
+  const { loadImage, createCanvas } = await import("@napi-rs/canvas");
+  const img = await loadImage(imageBuffer);
+  let canvas;
+  let ctx;
+
+  if (angleDegrees === 90 || angleDegrees === 270) {
+    canvas = createCanvas(img.height, img.width);
+    ctx = canvas.getContext("2d");
+  } else {
+    canvas = createCanvas(img.width, img.height);
+    ctx = canvas.getContext("2d");
+  }
+
+  if (angleDegrees === 90) {
+    ctx.translate(img.height, 0);
+    ctx.rotate(Math.PI / 2);
+  } else if (angleDegrees === 180) {
+    ctx.translate(img.width, img.height);
+    ctx.rotate(Math.PI);
+  } else if (angleDegrees === 270) {
+    ctx.translate(0, img.width);
+    ctx.rotate(-Math.PI / 2);
+  }
+
+  ctx.drawImage(img, 0, 0);
+  return canvas.toBuffer("image/png");
+}
+
 async function performOCR(filePath: string): Promise<string> {
   console.log(
     "⚠️ Low text density detected. OCR Fallback Triggered for file:",
@@ -30,7 +62,7 @@ async function performOCR(filePath: string): Promise<string> {
   );
   let parser;
   try {
-    const [{ PDFParse }, { createWorker }] = await Promise.all([
+    const [{ PDFParse }, { createWorker, PSM }] = await Promise.all([
       import("pdf-parse"),
       import("tesseract.js"),
     ]);
@@ -44,25 +76,109 @@ async function performOCR(filePath: string): Promise<string> {
       imageBuffer: true,
     });
 
+    if (!screenshots.pages || screenshots.pages.length === 0) {
+      throw new Error("No pages could be rendered from the PDF.");
+    }
+
     console.log(
-      `Generated ${screenshots.pages.length} page image buffers. Beginning tesseract.js OCR...`,
+      `Generated ${screenshots.pages.length} page image buffers. Running orientation detection...`,
     );
 
-    const ocrTexts: string[] = [];
-    const worker = await createWorker("eng");
+    // 1. Run OSD once on the first page
+    let detectedAngle = 0;
+    const osdWorker = await createWorker("eng", 1, {
+      legacyCore: true,
+      legacyLang: true,
+    });
+    try {
+      const detectResult = await osdWorker.detect(Buffer.from(screenshots.pages[0].data));
+      const orientation = detectResult.data.orientation_degrees;
+      const confidence = detectResult.data.orientation_confidence;
+      console.log(`[OSD] Detected orientation_degrees=${orientation}, confidence=${confidence}`);
+      
+      if (typeof orientation === "number" && (confidence === undefined || confidence === null || confidence > 2)) {
+        detectedAngle = (360 - orientation) % 360;
+        if (detectedAngle !== 0) {
+          console.log(`[OSD] Document pages are rotated by ${orientation}° clockwise. Applying ${detectedAngle}° correction rotation to all pages.`);
+        } else {
+          console.log("[OSD] Document orientation is normal.");
+        }
+      }
+    } catch (osdErr: any) {
+      console.error("[OSD] Orientation detection failed, defaulting to 0° rotation:", osdErr);
+    } finally {
+      await osdWorker.terminate();
+    }
 
+    // 2. Pre-rotate all page image buffers
+    const processedPageBuffers: Buffer[] = [];
     for (const page of screenshots.pages) {
       if (!page.data) {
         throw new Error(
           `Page ${page.pageNumber} rendered image buffer is empty`,
         );
       }
+      let pageBuffer = Buffer.from(page.data);
+      if (detectedAngle !== 0) {
+        try {
+          pageBuffer = await rotateImage(pageBuffer, detectedAngle);
+        } catch (rotErr) {
+          console.error(`[Rotation] Failed to rotate page ${page.pageNumber}:`, rotErr);
+        }
+      }
+      processedPageBuffers.push(pageBuffer);
+    }
+
+    console.log(`Beginning tesseract.js OCR using PSM 3...`);
+    const ocrTexts: string[] = [];
+    const worker = await createWorker("eng");
+
+    // Set Page Segmentation Mode to AUTO (no OSD) as the pages are already rotated correctly.
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.AUTO,
+    });
+
+    for (let i = 0; i < screenshots.pages.length; i++) {
+      const page = screenshots.pages[i];
+      let pageBuffer = processedPageBuffers[i];
       console.log(
         `Performing OCR on page ${page.pageNumber}/${screenshots.pages.length}...`,
       );
-      const {
-        data: { text },
-      } = await worker.recognize(Buffer.from(page.data));
+      let {
+        data: { text, confidence },
+      } = await worker.recognize(pageBuffer);
+
+      // 3. Per-page low-confidence orientation retry
+      const OCR_CONFIDENCE_THRESHOLD = 70;
+      if (confidence < OCR_CONFIDENCE_THRESHOLD) {
+        console.log(`[OCR Quality] Page ${page.pageNumber} OCR confidence is low (${confidence}). Retrying other orientations...`);
+        let bestText = text;
+        let bestConfidence = confidence;
+        let bestAngle = detectedAngle;
+        
+        const candidateAngles = [0, 90, 180, 270].filter(a => a !== detectedAngle);
+        
+        for (const angle of candidateAngles) {
+          try {
+            const retriedBuffer = await rotateImage(Buffer.from(page.data), angle);
+            const retryRes = await worker.recognize(retriedBuffer);
+            if (retryRes.data.confidence > bestConfidence) {
+              bestConfidence = retryRes.data.confidence;
+              bestText = retryRes.data.text;
+              bestAngle = angle;
+            }
+          } catch (retryErr) {
+            console.error(`[OCR Quality] Failed retry recognition at angle ${angle} for page ${page.pageNumber}:`, retryErr);
+          }
+        }
+        
+        if (bestConfidence > confidence) {
+          console.log(`[OCR Quality] Successfully improved page ${page.pageNumber} OCR confidence from ${confidence} to ${bestConfidence} using angle ${bestAngle}°`);
+          text = bestText;
+          confidence = bestConfidence;
+        }
+      }
+
       ocrTexts.push(text);
     }
 
@@ -129,7 +245,7 @@ async function getInitialExtractedData(rawText: string): Promise<any> {
 
 async function runEndToEndTest() {
   const pdfPath =
-    "C:\\Users\\hp\\Downloads\\20. Prius Agreement Office MCInd D3 200723_15.04.2020 to 14.04.2023.pdf";
+    "C:\\Users\\hp\\Downloads\\BHQ + OZONE OVERSEAS AGREEMENT 31.1.25.pdf";
   console.log(`🚀 Starting End-to-End RAG Test on PDF:\n   "${pdfPath}"\n`);
 
   const startTimeTotal = performance.now();
