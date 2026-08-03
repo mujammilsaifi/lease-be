@@ -263,9 +263,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
       });
     }
 
-    const MAX_SIZE = 15 * 1024 * 1024;
+    const MAX_SIZE = 100 * 1024 * 1024;
     if (req.file.size > MAX_SIZE) {
-      return res.status(400).json({ error: "File exceeds 15MB limit" });
+      return res.status(400).json({ error: "File exceeds 100MB limit" });
     }
 
     const trackingId = req.body.trackingId;
