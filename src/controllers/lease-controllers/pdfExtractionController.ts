@@ -485,6 +485,14 @@ export const extractPdfController = async (req: Request, res: Response) => {
       throw new Error("No text content could be extracted from this document.");
     }
 
+    try {
+      const debugFilePath = path.join(process.cwd(), "extracted_text_debug.txt");
+      fs.writeFileSync(debugFilePath, extractedText, "utf8");
+      console.log(`[Debug] Extracted text successfully saved to: ${debugFilePath}`);
+    } catch (writeErr) {
+      console.error("[Debug] Failed to write extracted text to debug file:", writeErr);
+    }
+
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
