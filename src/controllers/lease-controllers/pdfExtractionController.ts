@@ -331,6 +331,7 @@ export async function performFinancialExtractionDirect(
     - For rentPaymentDate, if they say end of month/period, use 'endOfPeriod'. If a specific numerical date is given, use the number.
     - For systematicEscalations, dateRange is a SINGLE string "YYYY-MM-DD" indicating when the escalation starts/applies.
     - For adhocEscalations, rentFreePeriods, and discountingRates, dateRange is an ARRAY of two strings: ["start_date", "end_date"].
+    - CRITICAL FOR adhocEscalations: The "amount" field MUST be the TOTAL fixed monthly/periodic rental amount for that date range (e.g., 425000), NOT the incremental difference/increase (e.g., NOT 50000). Base rent for the initial period (e.g., 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
     - For rentFreePeriods, the percentage is typically 100 unless a partial waiver is specified.
     - Estimate a confidence score between 0.0 and 1.0 representing your certainty of the extraction accuracy.
     

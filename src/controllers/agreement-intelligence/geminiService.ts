@@ -10,10 +10,12 @@ const modelHealthMap = new Map<string, ModelHealth>();
 
 // Default model cascade hierarchy for automatic fallback
 const DEFAULT_MODEL_CASCADE = [
-  "gemini-2.5-pro",
   "gemini-2.5-flash",
-  "gemini-1.5-flash",
-  "gemini-2.5-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+  "gemini-3.1-pro-preview",
+  "gemini-3.5-flash-lite",
+  "gemini-flash-latest",
 ];
 
 function isTransientError(error: any): boolean {
@@ -25,6 +27,7 @@ function isTransientError(error: any): boolean {
   if (
     msg.includes("503") ||
     msg.includes("429") ||
+    msg.includes("demand") ||
     msg.includes("econnreset") ||
     msg.includes("etimedout") ||
     msg.includes("unavailable") ||
@@ -32,7 +35,8 @@ function isTransientError(error: any): boolean {
     msg.includes("resource_exhausted") ||
     msg.includes("fetch failed") ||
     msg.includes("internal server error") ||
-    msg.includes("high load")
+    msg.includes("high load") ||
+    msg.includes("temporary")
   ) {
     return true;
   }

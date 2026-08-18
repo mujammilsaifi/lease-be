@@ -55,6 +55,7 @@ keywords: rent, period, gst, working period, lock-in, incentive, direct cost, pu
    - In this section, along with the date range (`dateRange`), the percentage of rent waived (`percentage`) is also required to be filled.
    - **Example:** If 50% rent is free from 1 April 2025 to 30 June 2025, enter `50` in the percentage field.
    - **Multiple Periods:** In case there are multiple rent-free periods mentioned in the agreement, all periods should be added by adding new rows (`Add New`).
+   - **Rent Initiation Date vs. Agreement Start Date Handling:** In case the rent initiation date is after the agreement starting date in the agreement, the tool/AI MUST inform this fact to management and ask whether the lease should be initiated from the agreement start date or the rent initiation date. In case management opts for the **rent initiation date**, the **Lease Working Period (`leaseWorkingPeriod`)** (as described under Section 2) MUST be updated accordingly.
 
 ## Systematic Escalation (`systematicEscalations`)
 1. **Applicability:** Use when escalation in the agreement is given as a percentage increase (e.g., 5% increase every year, or 5% in first year and 10% in second year).
@@ -112,4 +113,6 @@ keywords: rent, period, gst, working period, lock-in, incentive, direct cost, pu
    - **Strict Restriction:** If nothing is mentioned in the agreement about lease incentives, do NOT ask management for lease incentives or date of lease incentive.
 2. **Initial Direct Costs (Positive Balance):**
    - Positive balance will come for the amount of any initial direct costs incurred by the lessee as per agreement or as communicated by management.
-   - If nothing is mentioned in the agreement, the tool/AI MUST ask management **every time** an agreement is shared: *"Were there any initial direct costs incurred by the lessee at the initiation of the agreement?"*
+   - **Management Confirmation Flow:** If nothing is mentioned in the agreement, the tool/AI MUST ask management **every time** an agreement is shared: *"Were there any initial direct costs incurred by the lessee at the initiation of the agreement?"*
+   - If management response is **"Yes"**, the tool/AI MUST ask for the amount of the initial direct cost.
+   - On receiving the amount, the tool/AI MUST put the amount in **"ROU Adjustments"** in the Form with the **date of initiation of lease working**.

@@ -965,6 +965,7 @@ export async function performFinancialExtractionWithAnswersDirect(
     8. **Data Provenance:** For each extracted field, determine the source of the value.
        - The source MUST be one of: "Agreement" (extracted from text), "Management Clarification" (from Stage 1 or Stage 2 confirmations), or "Assessment Reasoning" (computed based on compliance logic).
        - Provide the confidence score (High, Medium, Low) and the source text snippet when from the agreement.
+    9. **Adhoc Escalations:** The "amount" field in "adhocEscalations" MUST be the TOTAL fixed rental amount for that date range (e.g. 425000), NOT the incremental increase (e.g. NOT 50000). Base rent for the initial period (e.g. 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
 
     Return the output as a valid JSON object matching exactly this schema, without any markdown formatting, backticks, or extra text:
     {

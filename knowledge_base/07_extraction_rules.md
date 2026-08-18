@@ -26,7 +26,7 @@
 - **Lease Period (`leasePeriod`):**
   - Start date is indicated by "Commencement Date", "effective from", "shall commence from", "valid from".
   - End date is indicated by "Valid till", "expires on", "valid up to", "ending on".
-- **Lease Working Period (`leaseWorkingPeriod`):** Non-cancellable + extension options (if reasonably certain) + renewable periods. Defaults to `leasePeriod`.
+- **Lease Working Period (`leaseWorkingPeriod`):** Non-cancellable + extension options (if reasonably certain) + renewable periods. Defaults to `leasePeriod`. If rent initiation date is after agreement start date, prompt management whether to initiate from agreement start date or rent initiation date, and update `leaseWorkingPeriod` if management chooses rent initiation date.
 - **Lock-in Period (`lockingPeriod`):** Must match `leaseWorkingPeriod`.
 - **Rent Payment Details (`rentPaymentType`):** `'Advance Payment'` (default) or `'Arrear Payment'`.
 - **Interest Calculation Frequency (`frequencyForInterestCalculation`):** Always `'Monthly'`.
@@ -39,7 +39,7 @@
   - If missing from agreement, ask management for the Rent payment date.
 - **Discount Rate (`discountingRates`):** Extract rate and date range. If missing from agreement, ask management for the discount rate.
 - **Security Deposit (`securityDeposit`):** Extract amount. If interest-free (or unspecified, defaulting to interest-free), ask management to confirm inclusion in form.
-- **Rent Free Periods (`rentFreePeriods`):** Extract date range (`dateRange`) and percentage waived (`percentage`, e.g. `50`).
+- **Rent Free Periods (`rentFreePeriods`):** Extract date range (`dateRange`) and percentage waived (`percentage`, e.g. `50`). If rent initiation date is after agreement start date, notify management and ask whether lease initiates from agreement start date or rent initiation date (updating `leaseWorkingPeriod` accordingly if chosen).
 - **Systematic Escalations (`systematicEscalations`):** Extract initiation date (`dateRange`), frequency (`Monthly`, `Quarterly`, `Semi-Annual`, `Yearly`), and percentage (`percentage`).
 - **Adhoc Escalations (`adhocEscalations`):** Extract date range (`dateRange`), frequency (inherits `rentPaymentFrequency`), and fixed amount (`amount`).
-- **ROU Adjustments (`rouAdjustments`):** Extract adjustment date (`adjustmentDate`) and amount (`adjustmentAmount`: negative for lease incentives, positive for initial direct costs).
+- **ROU Adjustments (`rouAdjustments`):** Extract adjustment date (`adjustmentDate`) and amount (`adjustmentAmount`: negative for lease incentives, positive for initial direct costs). If initial direct costs are unspecified in agreement, ask management if incurred; if "Yes", ask for amount and enter in `rouAdjustments` using the lease working initiation date.
