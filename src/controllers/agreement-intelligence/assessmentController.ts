@@ -965,7 +965,7 @@ export async function performFinancialExtractionWithAnswersDirect(
     8. **Data Provenance:** For each extracted field, determine the source of the value.
        - The source MUST be one of: "Agreement" (extracted from text), "Management Clarification" (from Stage 1 or Stage 2 confirmations), or "Assessment Reasoning" (computed based on compliance logic).
        - Provide the confidence score (High, Medium, Low) and the source text snippet when from the agreement.
-    9. **Adhoc Escalations:** The "amount" field in "adhocEscalations" MUST be the TOTAL fixed rental amount for that date range (e.g. 425000), NOT the incremental increase (e.g. NOT 50000). Base rent for the initial period (e.g. 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
+    9. **Adhoc Escalations vs Systematic Escalations (STRICT NON-CONVERSION RULE):** Extract "systematicEscalations" for percentage-based rent increases and "adhocEscalations" for explicit fixed step rent amounts. Both CAN coexist in an agreement if the document explicitly specifies both types. However, you MUST NOT convert a systematic percentage escalation into ad-hoc escalations (do NOT populate "adhocEscalations" with scheduled breakdown amounts calculated from a systematic percentage escalation). The "amount" field in "adhocEscalations" MUST only be used for standalone fixed rental steps specified in the agreement without a percentage rule. Base rent for the initial period (e.g. 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
 
     Return the output as a valid JSON object matching exactly this schema, without any markdown formatting, backticks, or extra text:
     {
@@ -1114,6 +1114,129 @@ export const confirmFinancialController = async (req: Request, res: Response) =>
     }
   } catch (error: any) {
     console.error("Error in confirmFinancialController:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+};
+
+// Controller for POST /api/v1/agreement-intelligence/save-progress
+export const saveProgressController = async (req: Request, res: Response) => {
+  try {
+    const {
+      agreementId,
+      sessionData,
+      assessmentSession,
+    } = req.body;
+
+    const targetId =
+      agreementId || sessionData?.agreementId || assessmentSession?.agreementId;
+
+    if (!targetId) {
+      return res.status(400).json({ error: "agreementId is required" });
+    }
+
+    const sanitizeQuestionList = (qList: any[]): any[] => {
+      if (!Array.isArray(qList)) return [];
+      return qList.map((q, idx) => ({
+        ...q,
+        questionId: q.questionId || `Q${idx + 1}`,
+        title: q.title || q.promptText || q.questionId || `Question ${idx + 1}`,
+      }));
+    };
+
+    let assessment = await LeaseAssessment.findOne({ agreementId: targetId });
+
+    if (!assessment) {
+      const dataToSave = sessionData || assessmentSession || req.body;
+      assessment = new LeaseAssessment({
+        agreementId: targetId,
+        fileName: dataToSave.fileName || "Agreement",
+        rawText: dataToSave.rawText || "",
+        questions: sanitizeQuestionList(dataToSave.questions),
+        recommendation: dataToSave.recommendation || null,
+        overallConfidence: dataToSave.overallConfidence || 1.0,
+        recommendationNarrative: dataToSave.recommendationNarrative || "",
+        status: dataToSave.status || "in_progress",
+        financialDataExtracted: dataToSave.financialDataExtracted || false,
+        financialClarifications: dataToSave.financialClarifications
+          ? {
+              ...dataToSave.financialClarifications,
+              questions: sanitizeQuestionList(dataToSave.financialClarifications.questions),
+            }
+          : {
+              questions: [],
+              status: "pending",
+              resolvedFacts: {},
+            },
+      });
+    } else {
+      const incomingData = sessionData || assessmentSession || req.body;
+
+      if (incomingData.questions) {
+        assessment.questions = sanitizeQuestionList(incomingData.questions);
+      }
+      if (incomingData.status) assessment.status = incomingData.status;
+      if (incomingData.recommendation !== undefined)
+        assessment.recommendation = incomingData.recommendation;
+      if (incomingData.recommendationNarrative !== undefined)
+        assessment.recommendationNarrative = incomingData.recommendationNarrative;
+      if (incomingData.managementInputs)
+        assessment.managementInputs = incomingData.managementInputs;
+      if (incomingData.overrideReason !== undefined)
+        assessment.overrideReason = incomingData.overrideReason;
+      if (incomingData.financialDataExtracted !== undefined)
+        assessment.financialDataExtracted = incomingData.financialDataExtracted;
+      if (incomingData.financialClarifications) {
+        assessment.financialClarifications = {
+          ...assessment.financialClarifications,
+          ...incomingData.financialClarifications,
+          questions: sanitizeQuestionList(
+            incomingData.financialClarifications.questions ||
+              assessment.financialClarifications?.questions ||
+              [],
+          ),
+        };
+        assessment.markModified("financialClarifications");
+      }
+    }
+
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Progress saved successfully",
+      assessment,
+    });
+  } catch (error: any) {
+    console.error("Error in saveProgressController:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+};
+
+// Controller for GET /api/v1/agreement-intelligence/progress/:agreementId
+export const getProgressController = async (req: Request, res: Response) => {
+  try {
+    const { agreementId } = req.params;
+    if (!agreementId) {
+      return res.status(400).json({ error: "agreementId is required" });
+    }
+
+    const assessment = await LeaseAssessment.findOne({ agreementId });
+    if (!assessment) {
+      return res
+        .status(404)
+        .json({ error: "Saved progress session not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      assessment,
+    });
+  } catch (error: any) {
+    console.error("Error in getProgressController:", error);
     return res
       .status(500)
       .json({ error: "Internal server error", details: error.message });

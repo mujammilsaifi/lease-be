@@ -59,11 +59,12 @@ keywords: rent, period, gst, working period, lock-in, incentive, direct cost, pu
 
 ## Systematic Escalation (`systematicEscalations`)
 1. **Applicability:** Use when escalation in the agreement is given as a percentage increase (e.g., 5% increase every year, or 5% in first year and 10% in second year).
-2. **Form Fields:**
+2. **Non-Conversion Rule:** When systematic percentage escalation is present, do NOT create ad-hoc escalation entries for annual breakdown amounts or reference tables.
+3. **Form Fields:**
    - `dateRange` (Select Date): The date from which escalation initiates.
    - `frequency`: Options: `Monthly`, `Quarterly`, `Semi-Annual`, `Yearly`.
    - `percentage` (% Increase): Percentage of escalation (e.g., enter `10` for 10%).
-3. **Examples:**
+4. **Examples:**
    - **Example 1:**
      - Lease working period: 1 April 2025 to 31 March 2028
      - Escalation in agreement: 5% increase every year
@@ -78,8 +79,9 @@ keywords: rent, period, gst, working period, lock-in, incentive, direct cost, pu
        - Row 4: Date = `1 April 2029`, Frequency = `Yearly`, % Increase = `10`
 
 ## Adhoc Escalation (`adhocEscalations`)
-1. **Applicability:** Use when periodic fixed rent amounts are mentioned in the agreement instead of a percentage escalation.
-2. **Form Fields:**
+1. **Applicability:** Use when periodic fixed rent amounts are mentioned in the agreement as adhoc fixed step amounts without a percentage rule.
+2. **Coexistence & Non-Conversion Rule:** Both Systematic and Adhoc Escalations can coexist in an agreement ONLY IF the agreement explicitly defines both percentage increases and separate adhoc fixed step amounts. Systematic percentage escalations must NEVER be converted or duplicated into adhoc escalations.
+3. **Form Fields:**
    - `dateRange`: Start Date and End Date for the specific rental step.
    - `frequency`: Frequency of payment.
    - `amount`: Fixed rental amount for that period.

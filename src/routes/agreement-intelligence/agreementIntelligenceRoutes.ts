@@ -7,6 +7,8 @@ import {
   approveController,
   regenerateController,
   confirmFinancialController,
+  saveProgressController,
+  getProgressController,
 } from "../../controllers/agreement-intelligence/assessmentController";
 
 const router = express.Router();
@@ -18,6 +20,8 @@ router.post("/confirm", confirmController);
 router.post("/approve", approveController);
 router.post("/regenerate", regenerateController);
 router.post("/confirm-financial", confirmFinancialController);
+router.post("/save-progress", saveProgressController);
+router.get("/progress/:agreementId", getProgressController);
 
 export default router;
 

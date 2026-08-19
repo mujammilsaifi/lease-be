@@ -256,9 +256,13 @@ export async function performFinancialExtractionDirect(
        - Calculate totals when the document provides quantity multiplied by rate.
        - Infer frequency from phrases like monthly, per month, quarterly, annually, recurring billing, or monthly subscription.
     5. Escalation Clauses (Rent Increase):
-       - Systematic Escalation: Rent increases by a fixed percentage at regular intervals (e.g., "rent increases by 5% every year", "10% escalation every 3 years").
-       - Adhoc Escalation: Rent changes to specific fixed amounts for specific date ranges (e.g., "Rs 50,000 for year 1-2, Rs 60,000 for year 3-5").
-    6. Rent-Free / Fit-out Periods:
+        - Systematic Escalation: Rent increases by a fixed percentage at regular intervals (e.g., "rent increases by 5% every year", "10% escalation every 3 years").
+        - Adhoc Escalation: Rent changes to specific fixed amounts for specific date ranges (e.g., "Rs 50,000 for year 1-2, Rs 60,000 for year 3-5").
+        - ESCALATION CLASSIFICATION & NON-CONVERSION RULES:
+          - Both Systematic Escalation and Adhoc Escalation CAN coexist in an agreement if the agreement explicitly specifies both percentage-based increases and separate adhoc fixed step amounts.
+          - STRICT NON-CONVERSION RULE: You MUST NOT convert a systematic percentage escalation into ad-hoc escalations. If an agreement specifies a percentage escalation rule (e.g. 5% annual increase), extract it ONLY under "systematicEscalations". Do NOT calculate or copy the resulting scheduled/illustrative yearly rent amounts into "adhocEscalations".
+          - "adhocEscalations" should ONLY be extracted when specific fixed rupee step amounts are explicitly defined in the agreement without a percentage rule.
+     6. Rent-Free / Fit-out Periods:
        - Identify any periods where rent is explicitly waived or discounted (e.g., "first 3 months are rent-free for fit-outs", "no rent for the first 45 days").
     7. Discounting Rate:
        - Look for mentions of a discount rate, incremental borrowing rate (IBR), or interest rate used for lease liability calculations (e.g., "discount rate of 8.5%").
@@ -332,6 +336,7 @@ export async function performFinancialExtractionDirect(
     - For systematicEscalations, dateRange is a SINGLE string "YYYY-MM-DD" indicating when the escalation starts/applies.
     - For adhocEscalations, rentFreePeriods, and discountingRates, dateRange is an ARRAY of two strings: ["start_date", "end_date"].
     - CRITICAL FOR adhocEscalations: The "amount" field MUST be the TOTAL fixed monthly/periodic rental amount for that date range (e.g., 425000), NOT the incremental difference/increase (e.g., NOT 50000). Base rent for the initial period (e.g., 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
+    - STRICT NON-CONVERSION RULE FOR ESCALATIONS: Systematic Escalation and Adhoc Escalation must be extracted faithfully based on the agreement. Do NOT convert systematic percentage escalations into ad-hoc escalations (i.e. do NOT populate "adhocEscalations" with scheduled breakdown amounts calculated from a systematic percentage escalation). Extract "adhocEscalations" ONLY for explicit fixed step amounts specified without a percentage rule. Both fields can coexist ONLY if the agreement explicitly specifies both percentage escalations and separate fixed step amounts.
     - For rentFreePeriods, the percentage is typically 100 unless a partial waiver is specified.
     - Estimate a confidence score between 0.0 and 1.0 representing your certainty of the extraction accuracy.
     

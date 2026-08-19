@@ -53,6 +53,14 @@ A lease extraction must have `requiresManualReview: true` if:
 
 1. Your assessment should be qualitative as well as quantitative which is required for measuring rent and other quantitative measures such as in-substance fixed lease payments.
 
+## Escalation Classification & Non-Conversion Rule
+
+1. **Escalation Definitions:**
+   - `systematicEscalations`: Extracted when escalation in the agreement is defined as a percentage increase (e.g., 5% increase every year).
+   - `adhocEscalations`: Extracted when periodic fixed step rent amounts/ranges are explicitly defined in the agreement without a percentage rule.
+2. **Coexistence Allowed:** `systematicEscalations` and `adhocEscalations` CAN both exist in the same agreement if the document explicitly specifies both percentage-based increases and separate adhoc fixed step amounts.
+3. **Strict Prohibition on Conversion:** AI MUST NOT convert a systematic percentage escalation into ad-hoc escalations. Even if the agreement includes pre-calculated scheduled rupee amounts or an illustrative table for each year resulting from a percentage escalation, AI MUST NOT populate `adhocEscalations` with those calculated amounts.
+
 ## Low-Value Asset Rule & Guidelines
 
 1. **Management Confirmation Only:** In case AI assesses that a leased asset could qualify as a low-value asset, AI must ONLY ask management whether to consider that asset as a low-value asset or not (providing options such as `["Yes", "No"]`).

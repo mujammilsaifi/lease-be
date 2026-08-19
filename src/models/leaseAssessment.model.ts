@@ -40,7 +40,7 @@ export interface ILeaseAssessment extends Document {
 
 const LeaseAssessmentQuestionSchema = new Schema({
   questionId: { type: String, required: true },
-  title: { type: String, required: true },
+  title: { type: String, default: "" },
   status: {
     type: String,
     enum: ["automated", "confirmed", "pending"],
