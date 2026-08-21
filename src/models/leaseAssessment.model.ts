@@ -1,13 +1,14 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ILeaseAssessmentQuestion {
-  questionId: string; // Q1 to Q9
+  questionId: string; // Q1 to Q9 or FQ_...
   title: string;
   status: "automated" | "confirmed" | "pending";
   answer: string | null;
   confidence: number;
   explanation: string;
   promptText?: string;
+  inputType?: "date" | "number" | "boolean" | "select" | "text";
   options?: string[];
   aiUnderstanding?: string;
   whyAsked?: string;
@@ -50,6 +51,11 @@ const LeaseAssessmentQuestionSchema = new Schema({
   confidence: { type: Number, default: 0 },
   explanation: { type: String, default: "" },
   promptText: { type: String },
+  inputType: {
+    type: String,
+    enum: ["date", "number", "boolean", "select", "text"],
+    default: "select",
+  },
   options: { type: [String] },
   aiUnderstanding: { type: String },
   whyAsked: { type: String },

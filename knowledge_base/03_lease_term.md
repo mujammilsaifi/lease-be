@@ -26,6 +26,36 @@ An entity shall revise the lease term if there is a change in the non-cancellabl
 
 In accordance with the above, an arrangement to use an identified asset would meet the definition of a lease if it conveys the right to use an asset for a non- cancellable period of time. There is no requirement in the Standard for the non-cancellable period to be continuous. Accordingly, an arrangement that provides right to control the use of an identified asset would meet the definition of a lease even if it contains intermittent periods during which the customer does not have the right to control the use of the asset.
 
+## 1. Period of Lease (`leasePeriod`)
+- **Total Lease Period Definition:** Total agreement period to be considered in "Period of lease" must include non-cancellable period and cancellable period both.
+- **Renewable Period Inclusion:** In case renewable period is part of "Lease Working Period", then "Period of lease" will also include the renewable period.
+
+## 2. Lease Working Period (`leaseWorkingPeriod`) Determination Rules
+While identifying the "Lease Working Period", the following must be considered:
+
+### I) When non-cancellable period is mentioned in the agreement:
+a) **General Non-Cancellable Rule:** Non-cancellable period will be "Lease Working Period". Here, non-cancellable means that both lessee and lessor cannot cancel the lease during non-cancellable period.
+b) **Option to Cancel/Terminate During Non-Cancellable Period (Lessee Only):** In case the non-cancellable period is mentioned in the agreement and ONLY the lessee has the option to cancel / terminate the lease during the non-cancellable period, then AI will ask management for its intention. In case management confirms that it will not terminate the agreement during the non-cancellable period, then "Lease Working Period" will be the non-cancellable period.
+c) **Option to Cancel/Terminate During Non-Cancellable Period (Lessor Only):** In case the non-cancellable period is mentioned in the agreement but ONLY the lessor has the option to cancel / terminate the lease during the non-cancellable period, then "Lease Working Period" will be the non-cancellable period.
+d) **Option to Terminate Post Non-Cancellable Period (Lessee Only):** In case the non-cancellable period is mentioned in the agreement, and post completion of non-cancellable period, ONLY the lessee has an option to terminate the lease for the remaining period of lease and lessor cannot terminate the lease agreement: AI will ask management for its intention to terminate the lease agreement post non-cancellable period. In case management confirms that it will continue the lease agreement, then "Lease Working Period" will include the non-cancellable period and remaining period of lease both.
+e) **Option to Terminate Post Non-Cancellable Period (Lessor Only):** In case the non-cancellable period is mentioned in the agreement, and post completion of non-cancellable period, ONLY the lessor has an option to terminate the lease for the remaining period of lease and lessee cannot terminate the lease agreement: "Lease Working Period" will include the non-cancellable period and remaining period of lease both.
+f) **Lessee Unilateral Termination Right & Expectation Prompt:** If only a lessee has the right to terminate a lease, that right is considered to be an option to terminate the lease available to the lessee that an entity considers when determining the lease term. In such case, the tool/AI MUST ask management about the period within which the lessee expects to terminate the lease. The period within which the lessee expects to terminate the lease is to be included in "Lease Working Period".
+g) **Enforceability Limit:** A lease is no longer enforceable when the lessee and the lessor each have the right to terminate the lease without permission from the other party with no more than an insignificant penalty.
+
+### II) When no non-cancellable period is mentioned in the agreement:
+- In case there is no non-cancellable period mentioned in the agreement, then in such case lease agreement should be considered as a short term lease and thus, no need to identify "Lease Working Period".
+
+### III) Option for renewal of agreement post original lease period:
+a) **Mutual Renewal Option:** In case renewal option is based on mutual understanding of both lessor and lessee, then in such case renewal period is not to be mentioned in calculation of "Lease Working Period".
+b) **Lessee Unilateral Renewal Option:** In case ONLY the lessee has the right to renew the lease post completion of original lease period, then renewed period also to be assessed for non-cancellable period if any based on criteria mentioned in Para I above. In case there is a non-cancellable period in the renewable period, then such non-cancellable period also to be included in calculation of "Lease Working Period".
+c) **Lessor Unilateral Renewal Option:** In case ONLY the lessor has the right to renew the lease post completion of original lease period, then renewed period is not to be considered at all for the calculation of "Lease Working Period".
+
+### IV) Rent Start Date vs. Agreement Start Date Handling:
+- If rent start date is different from agreement start date, then in such case, AI should inform management about this fact and also ask management whether rent agreement to be initiated from agreement start date or rent start date and based on management input and other inputs as mentioned above, the "Lease Working Period" will be updated.
+
+## 3. Lock-In Period (`lockingPeriod`)
+- Lock-in period will be the exact same as "Lease Working Period".
+
 Paragraph B34 of Ind AS 116, states as follows:
 
 “In determining the lease term and assessing the length of the noncancellable period of a lease, an entity shall apply the definition of a contract and determine the period for which the contract is enforceable. A lease is no longer enforceable when the lessee and the lessor each has the right to terminate the lease without permission from the other party with no more than an insignificant penalty”

@@ -3,10 +3,10 @@
 ## Schema Fields Description
 - `lessorName` (string | null): The lessor or landlord name.
 - `natureOfLease` (string | null): Nature of lease, restricted to: `'Leasehold land'`, `'Building'`, `'Warehouse'`, `'Plant and Machinery'`, `'Vehicle'`, `'Office Equipments'`, `'Computer and Peripherals'`, `'Furniture and fixtures'`, `'Security Deposit'`, `'Other'`.
-- `leasePeriod` (object): Start and end dates.
+- `leasePeriod` (object): Start and end dates. Must include both non-cancellable period and cancellable period (and renewable period if part of Lease Working Period).
   - `start` (string YYYY-MM-DD)
   - `end` (string YYYY-MM-DD)
-- `leaseWorkingPeriod` (object): Same structure as `leasePeriod`. Includes renewable/extension periods if applicable. If not specified, defaults to `leasePeriod`.
+- `leaseWorkingPeriod` (object): Same structure as `leasePeriod`. Identified based on non-cancellable period, lessee/lessor termination options, management intentions, and renewable assessment. Not required if no non-cancellable period (treated as short term lease).
 - `lockingPeriod` (object): Same structure as `leasePeriod`. Must be set to the exact same duration as `leaseWorkingPeriod`.
 - `rentPaymentType` (string | null): `'Advance Payment'` or `'Arrear Payment'`. Defaults to `'Advance Payment'`.
 - `frequencyForInterestCalculation` (string | null): Always `'Monthly'`.

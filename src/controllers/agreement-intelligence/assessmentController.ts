@@ -136,12 +136,103 @@ export function computeFinalClassification(
   };
 }
 
+// Dynamic Input Type determination helper for management questions
+export function determineInputType(
+  q: any,
+): "date" | "number" | "boolean" | "select" | "text" {
+  if (
+    q &&
+    (q.inputType === "date" ||
+      q.inputType === "number" ||
+      q.inputType === "boolean" ||
+      q.inputType === "select" ||
+      q.inputType === "text")
+  ) {
+    return q.inputType;
+  }
+
+  const promptText = (q.promptText || "").toLowerCase();
+  const title = (q.title || "").toLowerCase();
+  const questionId = (q.questionId || "").toLowerCase();
+  const options = Array.isArray(q.options) ? q.options : [];
+
+  // 1. Date check
+  if (
+    promptText.includes("date") ||
+    title.includes("date") ||
+    questionId.includes("date") ||
+    promptText.includes("start date") ||
+    promptText.includes("end date") ||
+    promptText.includes("commencement") ||
+    promptText.includes("when does") ||
+    promptText.includes("initiation date")
+  ) {
+    if (
+      options.length > 0 &&
+      !options.every(
+        (o: string) => o.toLowerCase() === "yes" || o.toLowerCase() === "no",
+      )
+    ) {
+      return "select";
+    }
+    return "date";
+  }
+
+  // 2. Number check
+  if (
+    promptText.includes("rate") ||
+    promptText.includes("percentage") ||
+    promptText.includes("amount") ||
+    promptText.includes("price") ||
+    promptText.includes("cost") ||
+    promptText.includes("deposit") ||
+    promptText.includes("value") ||
+    promptText.includes("how much") ||
+    promptText.includes("day of month") ||
+    title.includes("rate") ||
+    title.includes("amount") ||
+    title.includes("cost") ||
+    title.includes("price") ||
+    questionId.includes("amount") ||
+    questionId.includes("price") ||
+    questionId.includes("rate")
+  ) {
+    if (
+      options.length > 0 &&
+      !options.every(
+        (o: string) => o.toLowerCase() === "yes" || o.toLowerCase() === "no",
+      )
+    ) {
+      return "select";
+    }
+    return "number";
+  }
+
+  // 3. Boolean check
+  if (
+    options.length === 2 &&
+    ((options[0].toLowerCase() === "yes" && options[1].toLowerCase() === "no") ||
+      (options[0].toLowerCase() === "no" && options[1].toLowerCase() === "yes"))
+  ) {
+    return "boolean";
+  }
+
+  // 4. Select check
+  if (options.length > 0) {
+    return "select";
+  }
+
+  // 5. Fallback for text
+  return "text";
+}
+
 // Transformation Layer: Formats the dynamically generated questions list from Gemini
 export function transformToQ1Q9Schema(
   questionsList: any[],
 ): ILeaseAssessmentQuestion[] {
   return (questionsList || []).map((q) => {
     const isPending = (q.confidence ?? 0) < 1.0;
+    const inputType = q.inputType || determineInputType(q);
     return {
       questionId: q.questionId || "Q1",
       title: q.title || "Criteria",
@@ -151,7 +242,13 @@ export function transformToQ1Q9Schema(
         q.confidence !== undefined ? q.confidence : isPending ? 0.5 : 1.0,
       explanation: q.explanation || "",
       promptText: q.promptText || q.title || q.explanation || "Clarification Question",
-      options: (Array.isArray(q.options) && q.options.length > 0) ? q.options : ["Yes", "No"],
+      inputType,
+      options:
+        Array.isArray(q.options) && q.options.length > 0
+          ? q.options
+          : inputType === "boolean"
+          ? ["Yes", "No"]
+          : undefined,
       aiUnderstanding: q.aiUnderstanding || "",
       whyAsked: q.whyAsked || "",
     } as ILeaseAssessmentQuestion;
@@ -412,13 +509,19 @@ export async function startLeaseAssessment(
          - If the agreement provides clear, explicit, and sufficient evidence to answer the question, set \`confidence\` to exactly \`1.00\` (100% confidence) and provide the \`answer\` (e.g., "Yes", "No", or specific facts). Such questions will be automatically confirmed without management intervention.
          - If the question cannot be answered from the contract alone (e.g., it depends on management's intent, future choices, facts outside the contract, or if the contract is silent on relocation/substitution ability), set \`confidence\` to less than \`1.00\` (e.g., \`0.80\` to \`0.95\`). In this case, set \`answer\` to \`null\` (since it requires management input), and specify \`promptText\` as a clear, natural language question tailored to this agreement, along with \`aiUnderstanding\` and \`whyAsked\`.
          - Avoid generating generic questions. Tailor the \`promptText\`, \`aiUnderstanding\`, and \`whyAsked\` to the specific facts, names, and assets mentioned in the agreement.
-       - Dynamic options logic:
-         - You must dynamically generate the response choices (\`options\`) to perfectly match the context, range, or nature of the question instead of defaulting only to "Yes" and "No". For example:
-           * If asking about low-value asset classification: \`["Yes", "No"]\` (CRITICAL: DO NOT specify or mention any monetary threshold, amount, or currency value).
-           * If asking about lease duration: \`["12 months or less", "More than 12 months"]\`
-           * If asking about payments: \`["Fixed Payments", "Variable Payments", "Both"]\`
-           * If asking standard confirmation: \`["Yes", "No"]\`
-         - CRITICAL: Management must never be presented with uncertainty. Do NOT include any options like "Unsure", "Unknown", "Insufficient Evidence", "N/A", "Maybe", or "Pending" in the \`options\` list. Management is expected to make a definitive business decision.
+         - Dynamic options and inputType logic:
+          - You must specify \`inputType\` for each question as one of:
+            * "boolean" (for Yes/No choices)
+            * "select" (for multi-choice dropdown selection)
+            * "date" (if asking for a specific date)
+            * "number" (if asking for a numeric quantity, rate, or amount)
+            * "text" (if asking for open description or textual response)
+          - You must dynamically generate the response choices (\`options\`) to perfectly match the context, range, or nature of the question instead of defaulting only to "Yes" and "No". For example:
+            * If asking about low-value asset classification: \`options: ["Yes", "No"]\`, \`inputType: "boolean"\` (CRITICAL: DO NOT specify or mention any monetary threshold, amount, or currency value).
+            * If asking about lease duration: \`options: ["12 months or less", "More than 12 months"]\`, \`inputType: "select"\`
+            * If asking about payments: \`options: ["Fixed Payments", "Variable Payments", "Both"]\`, \`inputType: "select"\`
+            * If asking standard confirmation: \`options: ["Yes", "No"]\`, \`inputType: "boolean"\`
+          - CRITICAL: Management must never be presented with uncertainty. Do NOT include any options like "Unsure", "Unknown", "Insufficient Evidence", "N/A", "Maybe", or "Pending" in the \`options\` list. Management is expected to make a definitive business decision.
 
     Return your response strictly as a JSON object matching this schema, without markdown backticks:
     {
@@ -446,6 +549,7 @@ export async function startLeaseAssessment(
           "answer": "string | null",
           "explanation": "string (concise CA-grade observation of fact referencing Ind AS 116 only. Do NOT include question numbers, paragraph numbers, or example names)",
           "promptText": "string (clear, natural language question asked to management, e.g. 'Is the lessee reasonably certain to exercise the renewal option?')",
+          "inputType": "date | number | boolean | select | text",
           "options": ["string"],
           "aiUnderstanding": "string (what the AI identified in the contract)",
           "whyAsked": "string (why management confirmation is required)"
@@ -718,30 +822,39 @@ export const approveController = async (req: Request, res: Response) => {
 
       YOUR INSTRUCTIONS:
       1. Perform a gap analysis of the Lease Agreement under Ind AS 116 based on the provided RAG guidelines and qualitative assessment context.
-      2. **Strict Fact Precedence:** Treat all confirmed answers from Stage 1 as established facts. DO NOT ask questions that have already been resolved (e.g. do not ask if renewal option is certain if answered YES).
+      2. **Strict Fact Precedence:** Treat all confirmed answers from Stage 1 as established facts. DO NOT ask questions that have already been resolved.
       3. Identify if any additional facts are missing or require clarification from management. Focus strictly on these points:
          - **GST Applicability:** Ask management: "Should GST be included in the rent amount for Ind AS 116 calculation, and if so, what is the applicable GST rate?"
-           FOR THE GST QUESTION, YOU MUST PROVIDE EXACTLY THESE TWO OPTIONS: ["Yes, 18%", "No, GST should not be included"].
+           FOR THE GST QUESTION, STRICTLY PROVIDE OPTIONS: ["Yes, 18%", "No, GST should not be included"], inputType: "select".
          - **Initial Direct Costs:** If not mentioned in the agreement, ask management: "Were there any initial direct costs incurred by the lessee at the initiation of the agreement?"
-         - **Lessee Unilateral Termination Right:** If only the lessee has the right to terminate, ask: "Within what period does the lessee expect to terminate the lease?"
-         - **Variable Index Rate Value:** If rent depends on index/rate, and commencement value is missing, ask.
-         - **Residual Value Guarantees:** If RVG is mentioned but expected amount is missing, ask.
-         - **Purchase Option Price:** If purchase option is certain but price is missing, ask.
-         - **In-substance Fixed Payments:** If mentioned but the amount is unclear, ask.
-         - **Lease Incentives:** If mentioned but date/receipt is unclear, ask.
+           OPTIONS: ["Yes, initial direct costs incurred", "No initial direct costs incurred"], inputType: "boolean". If confirmed yes, ask for initial direct cost amount with inputType: "number".
+         - **Rent Start Date vs. Agreement Start Date:** If rent start date differs from agreement start date, inform management of this fact and ask: "Rent initiation date differs from agreement start date. Should the lease agreement be initiated from agreement start date or rent start date?"
+           OPTIONS: ["Agreement Start Date", "Rent Start Date"], inputType: "select".
+         - **Lessee Unilateral Option During Non-Cancellable Period:** If non-cancellable period mentioned and ONLY lessee has option to cancel/terminate during non-cancellable period, ask: "Does management intend to cancel or terminate the lease agreement during the non-cancellable period?"
+           OPTIONS: ["No, management will not terminate", "Yes, management will terminate"], inputType: "boolean".
+         - **Lessee Unilateral Option Post Non-Cancellable Period:** If post non-cancellable period ONLY lessee has option to terminate remaining period, ask: "Is it management's intention to terminate the lease agreement post non-cancellable period?"
+           OPTIONS: ["No, management will continue the lease", "Yes, management will terminate post non-cancellable period"], inputType: "boolean".
+         - **Lessee Unilateral Termination Right:** If only the lessee has the right to terminate, ask: "Within what period does the lessee expect to terminate the lease?" inputType: "date" or "text" or "number".
+         - **Discount Rate:** If missing, ask for rate with inputType: "number".
+         - **Variable Index Rate Value:** If rent depends on index/rate, and commencement value is missing, ask with inputType: "number".
+         - **Residual Value Guarantees:** If RVG is mentioned but expected amount is missing, ask with inputType: "number".
+         - **Purchase Option Price:** If purchase option is certain but price is missing, ask with inputType: "number".
+         - **In-substance Fixed Payments:** If mentioned but the amount is unclear, ask with inputType: "number".
+         - **Lease Incentives:** If mentioned but date is missing, ask with inputType: "date". If receipt is unclear, ask with inputType: "boolean".
       4. Generate clarification questions ONLY for facts that are missing or require business decision. If a fact is explicitly mentioned in the text or already resolved, do NOT ask.
-      5. Options logic: For GST Applicability, strictly provide options: ["Yes, 18%", "No, GST should not be included"]. For Direct Costs: ["Yes, initial direct costs incurred", "No initial direct costs incurred"].
+      5. Input Type logic: For every generated question, assign 'inputType' matching the nature of input: "date" (for dates), "number" (for numeric amounts/rates), "boolean" (for Yes/No choices), "select" (for predefined multi-choice dropdown options), "text" (for text descriptions).
       6. Return a JSON object matching this schema:
       {
         "clarificationRequired": boolean,
         "questions": [
           {
-            "questionId": "string (e.g. FQ_gst, FQ_directcost, FQ_purchase_price)",
+            "questionId": "string (e.g. FQ_gst, FQ_directcost, FQ_rent_start_date, FQ_purchase_price)",
             "title": "string (short title)",
             "confidence": number,
             "answer": "string | null",
             "explanation": "string (concise CA-grade observation of why we are asking)",
             "promptText": "string (clear, natural language question asked to management)",
+            "inputType": "date | number | boolean | select | text",
             "options": ["string"],
             "aiUnderstanding": "string (what the AI identified in the contract)",
             "whyAsked": "string (why management confirmation is required)"
@@ -768,9 +881,11 @@ export const approveController = async (req: Request, res: Response) => {
           (q.questionId || "").toLowerCase().includes("gst") ||
           (q.title || "").toLowerCase().includes("gst") ||
           (q.promptText || "").toLowerCase().includes("gst");
-        if (isGstQuestion) {
+        if (isGstQuestion && (!options || options.length === 0)) {
           options = ["Yes, 18%", "No, GST should not be included"];
         }
+
+        const inputType = q.inputType || determineInputType({ ...q, options });
 
         return {
           questionId: q.questionId || `FQ_${idx + 1}`,
@@ -780,7 +895,8 @@ export const approveController = async (req: Request, res: Response) => {
           confidence: q.confidence !== undefined ? q.confidence : 0.5,
           explanation: q.explanation || "",
           promptText: q.promptText || q.title || q.explanation || "Financial Clarification Required",
-          options,
+          inputType,
+          options: options || (inputType === "boolean" ? ["Yes", "No"] : undefined),
           aiUnderstanding: q.aiUnderstanding || "",
           whyAsked: q.whyAsked || "",
         };
@@ -957,15 +1073,16 @@ export async function performFinancialExtractionWithAnswersDirect(
     CRITICAL EXTRACTION DIRECTIONS:
     1. **Precedence Rule:** Confirmed answers from Stage 1 and Stage 2 always take absolute precedence over values inferred from the text. Never overwrite them.
     2. **GST Applicability:** If GST is confirmed as applicable, compute the total rent amount including GST (e.g. if base rent is 100,000 and GST is 18%, rentAmount must be 118000).
-    3. **Initial Direct Costs:** Apply the initial direct costs to ROU adjustments. If confirmed as none, do not include.
-    4. **Lease Working Period:** Use the lease term and renewal option facts established in Stage 1 and Stage 2 to set start and end dates.
-    5. **Lock-In Period:** Set to the exact same period as the Lease Working Period.
-    6. **Frequency of Rent Payment:** If not mentioned, default to "monthly".
-    7. **Frequencies:** Rent Payment Frequency default "monthly", Interest Calculation Frequency always "monthly".
-    8. **Data Provenance:** For each extracted field, determine the source of the value.
+    3. **Initial Direct Costs:** Apply the initial direct costs to ROU adjustments ('rouAdjustments') with a positive balance on the lease working initiation date. If confirmed as none or missing, do not include.
+    4. **Rent Initiation Date vs. Agreement Start Date:** If management opted to initiate the agreement from the **Rent Start Date**, set the start date of **Lease Working Period ('leaseWorkingPeriod')** to the rent initiation date and adjust dates accordingly.
+    5. **Lease Working Period ('leaseWorkingPeriod'):** Use the lease term, non-cancellable period, lessee/lessor termination intentions, expected termination timeframe, and renewal option facts established in Stage 1 and Stage 2 to compute exact start and end dates.
+    6. **Lock-In Period ('lockingPeriod'):** Must ALWAYS be set to the exact same start and end dates as the calculated **Lease Working Period**.
+    7. **Frequency of Rent Payment:** If not mentioned, default to "monthly".
+    8. **Frequencies:** Rent Payment Frequency default "monthly", Interest Calculation Frequency always "monthly".
+    9. **Data Provenance:** For each extracted field, determine the source of the value.
        - The source MUST be one of: "Agreement" (extracted from text), "Management Clarification" (from Stage 1 or Stage 2 confirmations), or "Assessment Reasoning" (computed based on compliance logic).
        - Provide the confidence score (High, Medium, Low) and the source text snippet when from the agreement.
-    9. **Adhoc Escalations vs Systematic Escalations (STRICT NON-CONVERSION RULE):** Extract "systematicEscalations" for percentage-based rent increases and "adhocEscalations" for explicit fixed step rent amounts. Both CAN coexist in an agreement if the document explicitly specifies both types. However, you MUST NOT convert a systematic percentage escalation into ad-hoc escalations (do NOT populate "adhocEscalations" with scheduled breakdown amounts calculated from a systematic percentage escalation). The "amount" field in "adhocEscalations" MUST only be used for standalone fixed rental steps specified in the agreement without a percentage rule. Base rent for the initial period (e.g. 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
+    10. **Adhoc Escalations vs Systematic Escalations (STRICT NON-CONVERSION RULE):** Extract "systematicEscalations" for percentage-based rent increases and "adhocEscalations" for explicit fixed step rent amounts. Both CAN coexist in an agreement if the document explicitly specifies both types. However, you MUST NOT convert a systematic percentage escalation into ad-hoc escalations (do NOT populate "adhocEscalations" with scheduled breakdown amounts calculated from a systematic percentage escalation). The "amount" field in "adhocEscalations" MUST only be used for standalone fixed rental steps specified in the agreement without a percentage rule. Base rent for the initial period (e.g. 375000) is stored in "rentAmount" and should NOT be included in "adhocEscalations".
 
     Return the output as a valid JSON object matching exactly this schema, without any markdown formatting, backticks, or extra text:
     {
@@ -1142,6 +1259,7 @@ export const saveProgressController = async (req: Request, res: Response) => {
         ...q,
         questionId: q.questionId || `Q${idx + 1}`,
         title: q.title || q.promptText || q.questionId || `Question ${idx + 1}`,
+        inputType: q.inputType || determineInputType(q),
       }));
     };
 
@@ -1216,7 +1334,7 @@ export const saveProgressController = async (req: Request, res: Response) => {
   }
 };
 
-// Controller for GET /api/v1/agreement-intelligence/progress/:agreementId
+// Controller for GET /api/v1/agreement-intelligence/progress/:agreementId or /resume/:agreementId
 export const getProgressController = async (req: Request, res: Response) => {
   try {
     const { agreementId } = req.params;
@@ -1242,3 +1360,52 @@ export const getProgressController = async (req: Request, res: Response) => {
       .json({ error: "Internal server error", details: error.message });
   }
 };
+
+// Controller for GET /api/v1/agreement-intelligence/saved-list
+export const getSavedListController = async (req: Request, res: Response) => {
+  try {
+    const list = await LeaseAssessment.find(
+      {},
+      "agreementId fileName status recommendation overallConfidence createdAt updatedAt",
+    ).sort({ updatedAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: list.length,
+      list,
+    });
+  } catch (error: any) {
+    console.error("Error in getSavedListController:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+};
+
+// Controller for DELETE /api/v1/agreement-intelligence/saved/:agreementId
+export const deleteSavedController = async (req: Request, res: Response) => {
+  try {
+    const { agreementId } = req.params;
+    if (!agreementId) {
+      return res.status(400).json({ error: "agreementId is required" });
+    }
+
+    const result = await LeaseAssessment.deleteOne({ agreementId });
+    if (result.deletedCount === 0) {
+      return res
+        .status(404)
+        .json({ error: "Saved assessment session not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Saved assessment session deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Error in deleteSavedController:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+};
+

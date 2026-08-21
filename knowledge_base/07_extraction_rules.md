@@ -23,11 +23,18 @@
   - `Furniture and fixtures`
   - `Security Deposit`
   - `Other`
-- **Lease Period (`leasePeriod`):**
-  - Start date is indicated by "Commencement Date", "effective from", "shall commence from", "valid from".
-  - End date is indicated by "Valid till", "expires on", "valid up to", "ending on".
-- **Lease Working Period (`leaseWorkingPeriod`):** Non-cancellable + extension options (if reasonably certain) + renewable periods. Defaults to `leasePeriod`. If rent initiation date is after agreement start date, prompt management whether to initiate from agreement start date or rent initiation date, and update `leaseWorkingPeriod` if management chooses rent initiation date.
-- **Lock-in Period (`lockingPeriod`):** Must match `leaseWorkingPeriod`.
+- **Lease Period (`leasePeriod`):** Total agreement period to be considered in "Period of lease" must include non-cancellable period and cancellable period both. If a renewable period is part of "Lease Working Period", then "Period of lease" will also include the renewable period.
+- **Lease Working Period (`leaseWorkingPeriod`):** 
+  - Non-cancellable period is Lease Working Period (where both lessee and lessor cannot cancel).
+  - If only lessee has option to cancel/terminate during non-cancellable period, prompt management for intention; if confirmed not to terminate, set to non-cancellable period.
+  - If only lessor has option to cancel/terminate during non-cancellable period, set to non-cancellable period.
+  - If post non-cancellable period only lessee has option to terminate remaining period, prompt management intention; if confirmed to continue, include non-cancellable + remaining period both.
+  - If post non-cancellable period only lessor has option to terminate remaining period, include non-cancellable + remaining period both.
+  - If only lessee has right to terminate, prompt management for expected period within which lessee expects to terminate; include that period in Lease Working Period.
+  - If no non-cancellable period is mentioned: treat agreement as a short-term lease (no need to identify Lease Working Period).
+  - Renewal options: Mutual renewal (exclude from Lease Working Period), Lessee-only renewal (assess non-cancellable period in renewable term and include non-cancellable portion in Lease Working Period), Lessor-only renewal (exclude completely).
+  - If rent start date is different from agreement start date, inform management and prompt whether agreement initiates from agreement start date or rent start date, updating Lease Working Period based on input.
+- **Lock-in Period (`lockingPeriod`):** Must be exact same duration as `leaseWorkingPeriod`.
 - **Rent Payment Details (`rentPaymentType`):** `'Advance Payment'` (default) or `'Arrear Payment'`.
 - **Interest Calculation Frequency (`frequencyForInterestCalculation`):** Always `'Monthly'`.
 - **Rent Payment Frequency (`rentPaymentFrequency`):** `'Monthly'`, `'Quarterly'`, `'Semi-Annual'`, `'Yearly'`. Default: `'Monthly'`.

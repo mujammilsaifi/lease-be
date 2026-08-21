@@ -1,6 +1,16 @@
 /node_modules
 .env
 /dist
-
 /.env
 /env
+
+# Debug & Temp files
+extracted_text_debug.txt
+extracted_text_debug copy.txt
+uploads/
+
+# Microservice venv & bytecode
+paddle-ocr-service/venv/
+paddle-ocr-service/__pycache__/
+paddle-ocr-service/.paddlex/
+paddle-ocr-service/.paddleocr/
