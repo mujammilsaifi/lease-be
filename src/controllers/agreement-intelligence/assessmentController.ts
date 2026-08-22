@@ -964,6 +964,7 @@ export const approveController = async (req: Request, res: Response) => {
           ...financialData,
           agreementId,
         },
+        financialClarifications: assessment.financialClarifications,
       });
     }
   } catch (error: any) {
@@ -1143,7 +1144,11 @@ export async function performFinancialExtractionWithAnswersDirect(
         "rentPaymentFrequency": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
         "rentAmount": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
         "rentPaymentDate": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
-        "securityDeposit": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" }
+        "securityDeposit": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "discountingRates": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "systematicEscalations": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "adhocEscalations": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "rentFreePeriods": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" }
       }
     }
   `;
@@ -1167,6 +1172,38 @@ export async function performFinancialExtractionWithAnswersDirect(
     }
   }
 
+  if (!parsedJson.provenance) parsedJson.provenance = {};
+
+  const clarifications = assessment.financialClarifications?.questions || [];
+  clarifications.forEach((cq: any) => {
+    if (cq.status === "confirmed") {
+      const qTitle = (cq.title || "").toLowerCase();
+      const qId = (cq.questionId || "").toLowerCase();
+
+      if (qTitle.includes("discount") || qId.includes("discount")) {
+        parsedJson.provenance.discountingRates = {
+          source: "Management Clarification",
+          confidenceScore: "High",
+          sourceText: "Discount Rate confirmed by Management: " + (cq.answer || ""),
+        };
+      }
+      if (qTitle.includes("rent initiation") || qId.includes("rent_start_date")) {
+        parsedJson.provenance.leaseWorkingPeriod = {
+          source: "Management Clarification",
+          confidenceScore: "High",
+          sourceText: "Rent Initiation Date confirmed by Management: " + (cq.answer || ""),
+        };
+      }
+    }
+  });
+
+  if (parsedJson.discountingRates && parsedJson.discountingRates.length > 0 && !parsedJson.provenance.discountingRates) {
+    parsedJson.provenance.discountingRates = {
+      source: "Management Clarification",
+      confidenceScore: "High",
+      sourceText: "Discount Rate confirmed by Management",
+    };
+  }
   return parsedJson;
 }
 
@@ -1245,6 +1282,7 @@ export const confirmFinancialController = async (req: Request, res: Response) =>
           ...financialData,
           agreementId,
         },
+        financialClarifications: assessment.financialClarifications,
       });
     } else {
       await assessment.save();
@@ -1445,4 +1483,3 @@ export const deleteSavedController = async (req: Request, res: Response) => {
       .json({ error: "Internal server error", details: error.message });
   }
 };
-
