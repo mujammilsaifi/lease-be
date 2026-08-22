@@ -140,6 +140,34 @@ export function computeFinalClassification(
 export function determineInputType(
   q: any,
 ): "date" | "number" | "boolean" | "select" | "text" {
+  const questionId = (q.questionId || "").toLowerCase();
+  const promptText = (q.promptText || "").toLowerCase();
+  const title = (q.title || "").toLowerCase();
+  const options = Array.isArray(q.options) ? q.options : [];
+
+  // Standard qualitative checkpoint questions (Q1 to Q7, Q8_renewal, Q8_purchase) are boolean unless multi-choice options exist
+  if (
+    questionId.startsWith("q1") ||
+    questionId.startsWith("q2") ||
+    questionId.startsWith("q3") ||
+    questionId.startsWith("q4") ||
+    questionId.startsWith("q5") ||
+    questionId.startsWith("q6") ||
+    questionId.startsWith("q7") ||
+    questionId.startsWith("q8_renewal") ||
+    questionId.startsWith("q8_purchase")
+  ) {
+    if (
+      options.length > 0 &&
+      !options.every(
+        (o: string) => o.toLowerCase() === "yes" || o.toLowerCase() === "no",
+      )
+    ) {
+      return "select";
+    }
+    return "boolean";
+  }
+
   if (
     q &&
     (q.inputType === "date" ||
@@ -151,21 +179,16 @@ export function determineInputType(
     return q.inputType;
   }
 
-  const promptText = (q.promptText || "").toLowerCase();
-  const title = (q.title || "").toLowerCase();
-  const questionId = (q.questionId || "").toLowerCase();
-  const options = Array.isArray(q.options) ? q.options : [];
-
   // 1. Date check
   if (
-    promptText.includes("date") ||
-    title.includes("date") ||
-    questionId.includes("date") ||
     promptText.includes("start date") ||
     promptText.includes("end date") ||
-    promptText.includes("commencement") ||
+    promptText.includes("commencement date") ||
+    promptText.includes("initiation date") ||
     promptText.includes("when does") ||
-    promptText.includes("initiation date")
+    (promptText.includes("date") && !promptText.includes("update") && !promptText.includes("candidate")) ||
+    title.includes("date") ||
+    questionId.includes("date")
   ) {
     if (
       options.length > 0 &&
@@ -178,20 +201,19 @@ export function determineInputType(
     return "date";
   }
 
-  // 2. Number check
+  // 2. Number check (avoid matching 'low value' or 'separate components')
   if (
-    promptText.includes("rate") ||
+    promptText.includes("gst rate") ||
     promptText.includes("percentage") ||
     promptText.includes("amount") ||
     promptText.includes("price") ||
-    promptText.includes("cost") ||
-    promptText.includes("deposit") ||
-    promptText.includes("value") ||
+    promptText.includes("initial direct cost amount") ||
+    promptText.includes("security deposit amount") ||
+    promptText.includes("discount rate") ||
     promptText.includes("how much") ||
     promptText.includes("day of month") ||
     title.includes("rate") ||
     title.includes("amount") ||
-    title.includes("cost") ||
     title.includes("price") ||
     questionId.includes("amount") ||
     questionId.includes("price") ||
@@ -210,9 +232,15 @@ export function determineInputType(
 
   // 3. Boolean check
   if (
-    options.length === 2 &&
-    ((options[0].toLowerCase() === "yes" && options[1].toLowerCase() === "no") ||
-      (options[0].toLowerCase() === "no" && options[1].toLowerCase() === "yes"))
+    (options.length === 2 &&
+      ((options[0].toLowerCase() === "yes" && options[1].toLowerCase() === "no") ||
+        (options[0].toLowerCase() === "no" && options[1].toLowerCase() === "yes"))) ||
+    promptText.includes("whether") ||
+    promptText.includes("incurred") ||
+    promptText.includes("reasonably certain") ||
+    promptText.includes("exemption") ||
+    title.includes("exemption") ||
+    title.includes("option")
   ) {
     return "boolean";
   }
@@ -485,6 +513,7 @@ export async function startLeaseAssessment(
     - Tone: Write in the language of an experienced, senior Chartered Accountant (CA) writing a concise audit report for a CFO.
     - Style: Be extremely brief, concise, and direct. Refer to accounting standard ONLY as "Ind AS 116". DO NOT include question numbers (e.g. Q1-Q9, Question 1), paragraph numbers/citations (e.g. Para B14-B19), specific example names/numbers, or internal file locations.
     - Jargon: DO NOT use generic AI transition phrases (e.g. "This indicates...", "Therefore...", "Consequently...", "However...", "Moreover..."). State only direct contractual observations.
+    - STRICT LOCK-IN PERIOD RULE: If the agreement specifies an explicit Minimum Lock-in Period / Locking Period (e.g. 3 Years), that lock-in period is legally non-cancellable. The Lease Working Period and Lock-in Period MUST BE AT LEAST the duration of the explicit lock-in period (e.g. 3 Years). Notice period clauses (e.g. 3 months notice) specify notification lead-time, NOT the lease term. AI MUST NOT reduce the Lease Working Period below the explicit contractual lock-in period.
     - VARIABLE LEASE PAYMENTS & IN-SUBSTANCE FIXED RENT MANDATE: In case there are variable lease payments mentioned in the agreement, AI must assess whether there is any in-substance fixed lease rent mentioned in the agreement and explicitly include this evaluation in the qualitative recommendationNarrative and question explanations.
     - LOW-VALUE ASSET MANDATE: In case AI assesses that a leased asset could qualify as a low-value asset, AI must ONLY ask management whether to consider that asset as a low-value asset or not (e.g. options: ["Yes", "No"]). AI MUST NOT mention, specify, or refer to any monetary threshold (such as ₹3,00,000 or $5,000) when identifying, asking about, or describing the low-value asset.
 
@@ -612,8 +641,7 @@ export async function startLeaseAssessment(
         ) / parsedResponse.questions.length
       : 0.9,
     recommendationNarrative,
-    recommendationNarrativeVersion1:
-      remainingPending === 0 ? recommendationNarrative : "",
+
     status: "in_progress",
     financialDataExtracted: false,
   });
@@ -715,7 +743,6 @@ export const confirmController = async (req: Request, res: Response) => {
 
       assessment.recommendation = recommendation;
       assessment.recommendationNarrative = recommendationNarrative;
-      assessment.recommendationNarrativeVersion1 = recommendationNarrative;
     } else {
       console.log(
         `[Assessment Engine] Updated question ${questionId}. ${remainingPending} questions pending. Running local classification.`,
@@ -841,7 +868,7 @@ export const approveController = async (req: Request, res: Response) => {
          - **Purchase Option Price:** If purchase option is certain but price is missing, ask with inputType: "number".
          - **In-substance Fixed Payments:** If mentioned but the amount is unclear, ask with inputType: "number".
          - **Lease Incentives:** If mentioned but date is missing, ask with inputType: "date". If receipt is unclear, ask with inputType: "boolean".
-      4. Generate clarification questions ONLY for facts that are missing or require business decision. If a fact is explicitly mentioned in the text or already resolved, do NOT ask.
+      4. Generate clarification questions ONLY for facts that are missing or require business decision. If a fact is explicitly mentioned in the text or already resolved, do NOT ask. (Specifically: If security deposit amount or interest terms are explicitly stated in the contract text e.g. Clause 10 specifies Rs 15,00,000 security deposit, DO NOT ask if security deposit exists or should be included).
       5. Input Type logic: For every generated question, assign 'inputType' matching the nature of input: "date" (for dates), "number" (for numeric amounts/rates), "boolean" (for Yes/No choices), "select" (for predefined multi-choice dropdown options), "text" (for text descriptions).
       6. Return a JSON object matching this schema:
       {
@@ -973,11 +1000,9 @@ export const regenerateController = async (req: Request, res: Response) => {
     // Save inputs
     assessment.managementInputs = managementInputs;
 
-    // Ensure Version 1 is preserved
-    if (!assessment.recommendationNarrativeVersion1) {
-      assessment.recommendationNarrativeVersion1 =
-        assessment.recommendationNarrative || "";
-    }
+
+
+
 
     console.log(
       `[Assessment Engine] Regenerating summary with management inputs for ${agreementId}...`,
@@ -993,7 +1018,6 @@ export const regenerateController = async (req: Request, res: Response) => {
       geminiModel,
     );
 
-    assessment.recommendationNarrativeVersion2 = regeneratedNarrative;
     assessment.recommendationNarrative = regeneratedNarrative;
 
     await assessment.save();
@@ -1185,9 +1209,9 @@ export const confirmFinancialController = async (req: Request, res: Response) =>
     }
     
     if (assessment.financialClarifications.resolvedFacts instanceof Map) {
-      assessment.financialClarifications.resolvedFacts.set(title, value);
+      assessment.financialClarifications.resolvedFacts.set(title.replace(/\./g, ''), value);
     } else {
-      assessment.financialClarifications.resolvedFacts[title] = value;
+      assessment.financialClarifications.resolvedFacts[title.replace(/\./g, '')] = value;
     }
 
     // Mark modifications so Mongoose knows resolvedFacts Map/Object changed
@@ -1238,6 +1262,7 @@ export const confirmFinancialController = async (req: Request, res: Response) =>
 };
 
 // Controller for POST /api/v1/agreement-intelligence/save-progress
+// Controller for POST /api/v1/agreement-intelligence/save-progress
 export const saveProgressController = async (req: Request, res: Response) => {
   try {
     const {
@@ -1270,12 +1295,14 @@ export const saveProgressController = async (req: Request, res: Response) => {
       assessment = new LeaseAssessment({
         agreementId: targetId,
         fileName: dataToSave.fileName || "Agreement",
+        stage: dataToSave.stage || "assessment",
         rawText: dataToSave.rawText || "",
         questions: sanitizeQuestionList(dataToSave.questions),
         recommendation: dataToSave.recommendation || null,
         overallConfidence: dataToSave.overallConfidence || 1.0,
         recommendationNarrative: dataToSave.recommendationNarrative || "",
         status: dataToSave.status || "in_progress",
+        overrideReason: dataToSave.overrideReason,
         financialDataExtracted: dataToSave.financialDataExtracted || false,
         financialClarifications: dataToSave.financialClarifications
           ? {
@@ -1287,10 +1314,13 @@ export const saveProgressController = async (req: Request, res: Response) => {
               status: "pending",
               resolvedFacts: {},
             },
+        extractedFields: dataToSave.extractedFields || [],
+        rawFinancialData: dataToSave.rawFinancialData || null,
       });
     } else {
       const incomingData = sessionData || assessmentSession || req.body;
 
+      if (incomingData.stage) (assessment as any).stage = incomingData.stage;
       if (incomingData.questions) {
         assessment.questions = sanitizeQuestionList(incomingData.questions);
       }
@@ -1317,6 +1347,14 @@ export const saveProgressController = async (req: Request, res: Response) => {
         };
         assessment.markModified("financialClarifications");
       }
+      if (incomingData.extractedFields !== undefined) {
+        (assessment as any).extractedFields = incomingData.extractedFields;
+        assessment.markModified("extractedFields");
+      }
+      if (incomingData.rawFinancialData !== undefined) {
+        (assessment as any).rawFinancialData = incomingData.rawFinancialData;
+        assessment.markModified("rawFinancialData");
+      }
     }
 
     await assessment.save();
@@ -1333,7 +1371,6 @@ export const saveProgressController = async (req: Request, res: Response) => {
       .json({ error: "Internal server error", details: error.message });
   }
 };
-
 // Controller for GET /api/v1/agreement-intelligence/progress/:agreementId or /resume/:agreementId
 export const getProgressController = async (req: Request, res: Response) => {
   try {

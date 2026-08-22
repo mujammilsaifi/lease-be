@@ -23,18 +23,19 @@ export interface IFinancialClarification {
 export interface ILeaseAssessment extends Document {
   agreementId: string; // AGR-...
   fileName: string;
+  stage?: "assessment" | "financial-data";
   rawText: string;
   questions: ILeaseAssessmentQuestion[];
   recommendation: "Lease" | "Service Contract" | "Exempt Lease" | null;
   overallConfidence: number;
   recommendationNarrative: string;
-  recommendationNarrativeVersion1?: string;
-  recommendationNarrativeVersion2?: string;
   managementInputs?: string[];
   status: "in_progress" | "accepted_lease" | "accepted_service" | "overridden";
   overrideReason?: string;
   financialDataExtracted: boolean;
   financialClarifications: IFinancialClarification;
+  extractedFields?: any[];
+  rawFinancialData?: any;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +66,11 @@ const LeaseAssessmentSchema = new Schema(
   {
     agreementId: { type: String, required: true, unique: true, index: true },
     fileName: { type: String, required: true },
+    stage: {
+      type: String,
+      enum: ["assessment", "financial-data"],
+      default: "assessment",
+    },
     rawText: { type: String, required: true },
     questions: { type: [LeaseAssessmentQuestionSchema], default: [] },
     recommendation: {
@@ -74,8 +80,6 @@ const LeaseAssessmentSchema = new Schema(
     },
     overallConfidence: { type: Number, default: 0 },
     recommendationNarrative: { type: String, default: "" },
-    recommendationNarrativeVersion1: { type: String, default: "" },
-    recommendationNarrativeVersion2: { type: String, default: "" },
     managementInputs: { type: [String], default: [] },
     status: {
       type: String,
@@ -87,8 +91,10 @@ const LeaseAssessmentSchema = new Schema(
     financialClarifications: {
       questions: { type: [LeaseAssessmentQuestionSchema], default: [] },
       status: { type: String, enum: ["pending", "completed"], default: "completed" },
-      resolvedFacts: { type: Map, of: Schema.Types.Mixed, default: {} }
-    }
+      resolvedFacts: { type: Schema.Types.Mixed, default: {} }
+    },
+    extractedFields: { type: [Schema.Types.Mixed], default: [] },
+    rawFinancialData: { type: Schema.Types.Mixed, default: null },
   },
   { timestamps: true }
 );
