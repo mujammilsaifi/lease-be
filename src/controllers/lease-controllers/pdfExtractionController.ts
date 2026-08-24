@@ -180,7 +180,12 @@ export async function performFinancialExtractionDirect(
 
 // 2. Main upload controller: extracts text and runs first-pass assessment (instead of financial extraction)
 export const extractPdfController = async (req: Request, res: Response) => {
+  const requestStartTime = performance.now();
   let convertedPdfPath = "";
+  let ocrMetrics: any = null;
+  let pdfParseDurationMs = 0;
+  let aiAssessmentDurationMs = 0;
+
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -250,6 +255,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
     let extractedText = "";
     let pdfData;
     let parser;
+    const pdfParseStartTime = performance.now();
     try {
       const { PDFParse } = await import("pdf-parse");
       parser = new PDFParse({ data: fileBuffer });
@@ -263,6 +269,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
         } catch {}
       }
     }
+    pdfParseDurationMs = Math.round(performance.now() - pdfParseStartTime);
 
     extractedText = pdfData.text || "";
 
@@ -282,7 +289,9 @@ export const extractPdfController = async (req: Request, res: Response) => {
           message: "Scanned layout detected. Starting OCR...",
         });
       }
-      extractedText = await performOCR(targetFilePath, trackingId);
+      const ocrResult = await performOCR(targetFilePath, trackingId);
+      extractedText = ocrResult.text;
+      ocrMetrics = ocrResult.timing;
     } else {
       if (trackingId) {
         emitProgress(trackingId, {
@@ -321,12 +330,17 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
 
     // Run first-pass qualitative Lease Assessment
+    const aiStartTime = performance.now();
     const assessment = await startLeaseAssessment(
       req.file.originalname,
       extractedText,
       geminiApiKey,
       geminiModel,
     );
+    aiAssessmentDurationMs = Math.round(performance.now() - aiStartTime);
+
+    // Calculate total end-to-end duration
+    const totalRequestDurationMs = Math.round(performance.now() - requestStartTime);
 
     // If there is a warning (e.g. legacy doc), append it to assessment response
     const assessmentObj: any = assessment.toObject ? assessment.toObject() : assessment;
@@ -334,11 +348,38 @@ export const extractPdfController = async (req: Request, res: Response) => {
       assessmentObj.warning = "Legacy DOC files may lose formatting. For best accuracy, please upload DOCX or PDF.";
     }
 
+    // Attach structured timing breakdown
+    assessmentObj.timing = {
+      totalTimeMs: totalRequestDurationMs,
+      totalTimeFormatted: `${(totalRequestDurationMs / 1000).toFixed(2)}s`,
+      pdfParseTimeMs: pdfParseDurationMs,
+      ocr: ocrMetrics,
+      aiAssessmentTimeMs: aiAssessmentDurationMs,
+    };
+
+    console.log("========================================================================");
+    console.log(`[Agreement Intelligence Timing Breakdown] for: ${req.file.originalname}`);
+    console.log(`• Total Processing Time : ${(totalRequestDurationMs / 1000).toFixed(2)}s (${totalRequestDurationMs}ms)`);
+    console.log(`• PDF Text Extraction   : ${pdfParseDurationMs}ms`);
+    if (ocrMetrics) {
+      console.log(
+        `• OCR Check Time        : ${(ocrMetrics.totalOcrTimeMs / 1000).toFixed(2)}s (${ocrMetrics.pagesCount} pages, avg ${ocrMetrics.avgTimePerPageMs}ms/page)`
+      );
+      console.log(`  - Page Rendering      : ${ocrMetrics.pdfRenderTimeMs}ms`);
+      console.log(`  - OSD Angle Detection : ${ocrMetrics.osdTimeMs}ms (detected: ${ocrMetrics.detectedAngle}°)`);
+      console.log(`  - OCR Engine (${ocrMetrics.engineUsed}): ${ocrMetrics.ocrEngineTimeMs}ms`);
+    } else {
+      console.log(`• OCR Check Time        : Skipped (Digital PDF)`);
+    }
+    console.log(`• Gemini AI Assessment  : ${(aiAssessmentDurationMs / 1000).toFixed(2)}s (${aiAssessmentDurationMs}ms)`);
+    console.log("========================================================================");
+
     if (trackingId) {
       emitProgress(trackingId, {
         stage: "complete",
         percentage: 100,
-        message: "Agreement analysis and assessment completed.",
+        message: `Assessment completed in ${(totalRequestDurationMs / 1000).toFixed(1)}s.`,
+        timing: assessmentObj.timing,
       });
     }
 
@@ -368,3 +409,4 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
   }
 };
+

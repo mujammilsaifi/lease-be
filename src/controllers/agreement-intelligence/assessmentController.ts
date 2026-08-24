@@ -233,8 +233,8 @@ export function determineInputType(
   // 3. Boolean check
   if (
     (options.length === 2 &&
-      ((options[0].toLowerCase() === "yes" && options[1].toLowerCase() === "no") ||
-        (options[0].toLowerCase() === "no" && options[1].toLowerCase() === "yes"))) ||
+      ((options[0].toLowerCase().startsWith("yes") && options[1].toLowerCase().startsWith("no")) ||
+        (options[0].toLowerCase().startsWith("no") && options[1].toLowerCase().startsWith("yes")))) ||
     promptText.includes("whether") ||
     promptText.includes("incurred") ||
     promptText.includes("reasonably certain") ||
@@ -547,7 +547,7 @@ export async function startLeaseAssessment(
             * "text" (if asking for open description or textual response)
           - You must dynamically generate the response choices (\`options\`) to perfectly match the context, range, or nature of the question instead of defaulting only to "Yes" and "No". For example:
             * If asking about low-value asset classification: \`options: ["Yes", "No"]\`, \`inputType: "boolean"\` (CRITICAL: DO NOT specify or mention any monetary threshold, amount, or currency value).
-            * If asking about lease duration: \`options: ["12 months or less", "More than 12 months"]\`, \`inputType: "select"\`
+            * If asking about lease duration or lease term options: \`options: ["Lock-in Period", "Full Contract Period", "Specify Custom / Between Period"]\`, \`inputType: "select"\`
             * If asking about payments: \`options: ["Fixed Payments", "Variable Payments", "Both"]\`, \`inputType: "select"\`
             * If asking standard confirmation: \`options: ["Yes", "No"]\`, \`inputType: "boolean"\`
           - CRITICAL: Management must never be presented with uncertainty. Do NOT include any options like "Unsure", "Unknown", "Insufficient Evidence", "N/A", "Maybe", or "Pending" in the \`options\` list. Management is expected to make a definitive business decision.
@@ -853,15 +853,16 @@ export const approveController = async (req: Request, res: Response) => {
       3. Identify if any additional facts are missing or require clarification from management. Focus strictly on these points:
          - **GST Applicability:** Ask management: "Should GST be included in the rent amount for Ind AS 116 calculation, and if so, what is the applicable GST rate?"
            FOR THE GST QUESTION, STRICTLY PROVIDE OPTIONS: ["Yes, 18%", "No, GST should not be included"], inputType: "select".
-         - **Initial Direct Costs:** If not mentioned in the agreement, ask management: "Were there any initial direct costs incurred by the lessee at the initiation of the agreement?"
+         - **Initial Direct Costs:** If not mentioned in the agreement, ask the user: "Were there any initial direct costs incurred by the lessee at the initiation of the agreement?"
            OPTIONS: ["Yes, initial direct costs incurred", "No initial direct costs incurred"], inputType: "boolean". If confirmed yes, ask for initial direct cost amount with inputType: "number".
          - **Rent Start Date vs. Agreement Start Date:** If rent start date differs from agreement start date, inform management of this fact and ask: "Rent initiation date differs from agreement start date. Should the lease agreement be initiated from agreement start date or rent start date?"
            OPTIONS: ["Agreement Start Date", "Rent Start Date"], inputType: "select".
          - **Lessee Unilateral Option During Non-Cancellable Period:** If non-cancellable period mentioned and ONLY lessee has option to cancel/terminate during non-cancellable period, ask: "Does management intend to cancel or terminate the lease agreement during the non-cancellable period?"
            OPTIONS: ["No, management will not terminate", "Yes, management will terminate"], inputType: "boolean".
          - **Lessee Unilateral Option Post Non-Cancellable Period:** If post non-cancellable period ONLY lessee has option to terminate remaining period, ask: "Is it management's intention to terminate the lease agreement post non-cancellable period?"
-           OPTIONS: ["No, management will continue the lease", "Yes, management will terminate post non-cancellable period"], inputType: "boolean".
-         - **Lessee Unilateral Termination Right:** If only the lessee has the right to terminate, ask: "Within what period does the lessee expect to terminate the lease?" inputType: "date" or "text" or "number".
+           OPTIONS: ["No, management will continue the lease", "Yes, management will terminate post non-cancellable period", "Specify Custom / Between Period"], inputType: "select".
+         - **Lessee Unilateral Termination Right:** If only the lessee has the right to terminate, ask: "Within what period does the lessee expect to terminate the lease?"
+           OPTIONS: ["Lock-in Period", "Full Contract Period", "Specify Custom / Between Period"], inputType: "select".
          - **Discount Rate:** If missing, ask for rate with inputType: "number".
          - **Variable Index Rate Value:** If rent depends on index/rate, and commencement value is missing, ask with inputType: "number".
          - **Residual Value Guarantees:** If RVG is mentioned but expected amount is missing, ask with inputType: "number".
@@ -884,7 +885,7 @@ export const approveController = async (req: Request, res: Response) => {
             "inputType": "date | number | boolean | select | text",
             "options": ["string"],
             "aiUnderstanding": "string (what the AI identified in the contract)",
-            "whyAsked": "string (why management confirmation is required)"
+            "whyAsked": "string (why financial clarification is required. For initial direct costs, use: 'This question is conditional on the user confirming that initial direct costs were incurred.')"
           }
         ]
       }
@@ -901,15 +902,135 @@ export const approveController = async (req: Request, res: Response) => {
     const parsedGap = JSON.parse(cleanJsonResponse(gapResponse));
 
     if (parsedGap.clarificationRequired && parsedGap.questions && parsedGap.questions.length > 0) {
-      console.log(`[Assessment Engine] Financial clarifications required for ${agreementId}. Asking ${parsedGap.questions.length} questions.`);
-      const questions = (parsedGap.questions || []).map((q: any, idx: number) => {
+      let seenDirectCost = false;
+
+      // Collect resolved topics from Stage 1 (Qualitative Assessment) to prevent duplicate questions
+      const stage1ResolvedQuestions = (assessment.questions || []).filter(
+        (q: any) => q.status === "confirmed" || (q.answer !== null && q.answer !== undefined && String(q.answer).trim() !== "")
+      );
+
+      const hasStage1TermAnswer = stage1ResolvedQuestions.some((q: any) => {
+        const id = (q.questionId || "").toLowerCase();
+        const title = (q.title || "").toLowerCase();
+        return id.includes("q8") || id.includes("term") || title.includes("term") || title.includes("lease period") || title.includes("working period");
+      });
+
+      const hasStage1GstAnswer = stage1ResolvedQuestions.some((q: any) => {
+        const id = (q.questionId || "").toLowerCase();
+        const title = (q.title || "").toLowerCase();
+        return id.includes("gst") || title.includes("gst");
+      });
+
+      const hasStage1DiscountRateAnswer = stage1ResolvedQuestions.some((q: any) => {
+        const id = (q.questionId || "").toLowerCase();
+        const title = (q.title || "").toLowerCase();
+        return id.includes("discount") || id.includes("rate") || title.includes("discount");
+      });
+
+      const rawQuestions = (parsedGap.questions || []).filter((q: any) => {
+        const qId = (q.questionId || "").toLowerCase();
+        const qTitle = (q.title || "").toLowerCase();
+        const qPrompt = (q.promptText || "").toLowerCase();
+
+        // Non-repetition filter: Drop Stage 2 question if resolved in Stage 1
+        if (hasStage1TermAnswer && (qId.includes("term") || qId.includes("working_period") || qTitle.includes("term") || qTitle.includes("working period") || qPrompt.includes("expect to terminate"))) {
+          return false;
+        }
+        if (hasStage1GstAnswer && (qId.includes("gst") || qTitle.includes("gst") || qPrompt.includes("gst"))) {
+          return false;
+        }
+        if (hasStage1DiscountRateAnswer && (qId.includes("discount") || qTitle.includes("discount"))) {
+          return false;
+        }
+
+        const isDirectCost =
+          qId.includes("directcost") ||
+          qId.includes("direct_cost") ||
+          qTitle.includes("direct cost") ||
+          qPrompt.includes("initial direct") ||
+          qPrompt.includes("direct cost");
+
+        if (isDirectCost) {
+          if (seenDirectCost) {
+            return false;
+          }
+          seenDirectCost = true;
+        }
+        return true;
+      });
+
+      if (rawQuestions.length === 0) {
+        console.log(`[Assessment Engine] All generated clarifications resolved in Stage 1 for ${agreementId}. Proceeding directly to final extraction.`);
+        const stage1Facts: Record<string, any> = {};
+        (assessment.questions || []).forEach((q: any) => {
+          if (q.answer !== null && q.answer !== undefined && String(q.answer).trim() !== "") {
+            const key = (q.title || q.questionId || "").replace(/\./g, '');
+            stage1Facts[key] = q.answer;
+          }
+        });
+        assessment.financialClarifications = {
+          questions: [],
+          status: "completed",
+          resolvedFacts: stage1Facts,
+        };
+
+        const financialData = await performFinancialExtractionWithAnswersDirect(
+          assessment,
+          geminiApiKey,
+          geminiModel,
+        );
+
+        assessment.financialDataExtracted = true;
+        await assessment.save();
+
+        return res.status(200).json({
+          status: "complete",
+          financialData: {
+            ...financialData,
+            agreementId,
+          },
+          financialClarifications: assessment.financialClarifications,
+        });
+      }
+
+      console.log(`[Assessment Engine] Financial clarifications required for ${agreementId}. Asking ${rawQuestions.length} questions.`);
+      const questions = rawQuestions.map((q: any, idx: number) => {
         let options = (Array.isArray(q.options) && q.options.length > 0) ? q.options : undefined;
+        
         const isGstQuestion =
           (q.questionId || "").toLowerCase().includes("gst") ||
           (q.title || "").toLowerCase().includes("gst") ||
           (q.promptText || "").toLowerCase().includes("gst");
         if (isGstQuestion && (!options || options.length === 0)) {
           options = ["Yes, 18%", "No, GST should not be included"];
+        }
+
+        const isDirectCostQuestion =
+          (q.questionId || "").toLowerCase().includes("directcost") ||
+          (q.title || "").toLowerCase().includes("direct cost") ||
+          (q.promptText || "").toLowerCase().includes("initial direct cost") ||
+          (q.promptText || "").toLowerCase().includes("direct costs incurred");
+
+        if (isDirectCostQuestion && (!options || options.length === 0)) {
+          options = ["Yes, initial direct costs incurred", "No initial direct costs incurred"];
+        }
+
+        let whyAsked = q.whyAsked || "";
+        let explanation = q.explanation || "";
+        let aiUnderstanding = q.aiUnderstanding || "";
+
+        if (whyAsked.includes("management confirming")) {
+          whyAsked = whyAsked.replace(/management confirming/gi, "the user confirming");
+        }
+        if (explanation.includes("management confirming")) {
+          explanation = explanation.replace(/management confirming/gi, "the user confirming");
+        }
+        if (aiUnderstanding.includes("management confirming")) {
+          aiUnderstanding = aiUnderstanding.replace(/management confirming/gi, "the user confirming");
+        }
+
+        if (isDirectCostQuestion) {
+          whyAsked = "This question is conditional on the user confirming that initial direct costs were incurred.";
         }
 
         const inputType = q.inputType || determineInputType({ ...q, options });
@@ -920,19 +1041,27 @@ export const approveController = async (req: Request, res: Response) => {
           status: "pending",
           answer: null,
           confidence: q.confidence !== undefined ? q.confidence : 0.5,
-          explanation: q.explanation || "",
+          explanation,
           promptText: q.promptText || q.title || q.explanation || "Financial Clarification Required",
           inputType,
-          options: options || (inputType === "boolean" ? ["Yes", "No"] : undefined),
-          aiUnderstanding: q.aiUnderstanding || "",
-          whyAsked: q.whyAsked || "",
+          options: options || (inputType === "boolean" ? ["Yes, initial direct costs incurred", "No initial direct costs incurred"] : undefined),
+          aiUnderstanding,
+          whyAsked,
         };
       });
       
+      const stage1Facts: Record<string, any> = {};
+      (assessment.questions || []).forEach((q: any) => {
+        if (q.answer !== null && q.answer !== undefined && String(q.answer).trim() !== "") {
+          const key = (q.title || q.questionId || "").replace(/\./g, '');
+          stage1Facts[key] = q.answer;
+        }
+      });
+
       assessment.financialClarifications = {
         questions,
         status: "pending",
-        resolvedFacts: {}
+        resolvedFacts: stage1Facts
       };
       
       await assessment.save();
@@ -1098,9 +1227,9 @@ export async function performFinancialExtractionWithAnswersDirect(
     CRITICAL EXTRACTION DIRECTIONS:
     1. **Precedence Rule:** Confirmed answers from Stage 1 and Stage 2 always take absolute precedence over values inferred from the text. Never overwrite them.
     2. **GST Applicability:** If GST is confirmed as applicable, compute the total rent amount including GST (e.g. if base rent is 100,000 and GST is 18%, rentAmount must be 118000).
-    3. **Initial Direct Costs:** Apply the initial direct costs to ROU adjustments ('rouAdjustments') with a positive balance on the lease working initiation date. If confirmed as none or missing, do not include.
+    3. **Initial Direct Costs & ROU Adjustments:** Extract 'rouAdjustments' ('adjustmentDate' and 'adjustmentAmount') on the lease working initiation date, preserving the exact numerical value and sign (positive or negative) as confirmed by the user. Do NOT force or alter the sign. If confirmed as none or missing, set 'rouAdjustments' to [].
     4. **Rent Initiation Date vs. Agreement Start Date:** If management opted to initiate the agreement from the **Rent Start Date**, set the start date of **Lease Working Period ('leaseWorkingPeriod')** to the rent initiation date and adjust dates accordingly.
-    5. **Lease Working Period ('leaseWorkingPeriod'):** Use the lease term, non-cancellable period, lessee/lessor termination intentions, expected termination timeframe, and renewal option facts established in Stage 1 and Stage 2 to compute exact start and end dates.
+    5. **Lease Working Period ('leaseWorkingPeriod'):** Use the lease term, non-cancellable period, lessee/lessor termination intentions, expected termination timeframe, custom specified between periods, and renewal option facts established in Stage 1 and Stage 2 to compute exact start and end dates. If management selected or specified a custom / between period (e.g. "5 Years", "Specify Custom / Between Period: 5 Years", or custom date/duration), set 'leaseWorkingPeriod' start and end dates to match that exact specified duration from the lease commencement date (e.g. 2016-09-01 to 2021-08-31).
     6. **Lock-In Period ('lockingPeriod'):** Must ALWAYS be set to the exact same start and end dates as the calculated **Lease Working Period**.
     7. **Frequency of Rent Payment:** If not mentioned, default to "monthly".
     8. **Frequencies:** Rent Payment Frequency default "monthly", Interest Calculation Frequency always "monthly".
@@ -1133,6 +1262,9 @@ export async function performFinancialExtractionWithAnswersDirect(
       "rentFreePeriods": [
         { "dateRange": ["YYYY-MM-DD", "YYYY-MM-DD"], "percentage": number }
       ],
+      "rouAdjustments": [
+        { "adjustmentDate": "YYYY-MM-DD", "adjustmentAmount": number }
+      ],
       "confidence": number,
       "provenance": {
         "lessorName": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
@@ -1148,7 +1280,8 @@ export async function performFinancialExtractionWithAnswersDirect(
         "discountingRates": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
         "systematicEscalations": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
         "adhocEscalations": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
-        "rentFreePeriods": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" }
+        "rentFreePeriods": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" },
+        "rouAdjustments": { "source": "Agreement | Management Clarification | Assessment Reasoning", "confidenceScore": "High | Medium | Low", "sourceText": "string" }
       }
     }
   `;
@@ -1161,6 +1294,14 @@ export async function performFinancialExtractionWithAnswersDirect(
   );
 
   const parsedJson = JSON.parse(cleanJsonResponse(responseText));
+
+  // Preserve exact user input value (positive or negative) for rouAdjustments
+  if (Array.isArray(parsedJson.rouAdjustments)) {
+    parsedJson.rouAdjustments = parsedJson.rouAdjustments.map((adj: any) => ({
+      ...adj,
+      adjustmentAmount: Number(adj.adjustmentAmount) || 0,
+    }));
+  }
 
   // Normalize working period & lock-in
   if (parsedJson.leasePeriod) {
