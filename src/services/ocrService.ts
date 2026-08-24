@@ -1,7 +1,7 @@
 import fs from "fs";
 import { optimizeImageForOcr, rotateImage } from "./ocr/imageUtils";
 import { detectDocumentOrientation, runTesseractFallback } from "./ocr/tesseractOcrService";
-import { runPaddleOCR, PaddleOcrResult } from "./ocr/paddleOcrService";
+import { runPaddleOCR, runPaddlePdfOCR, PaddleOcrResult } from "./ocr/paddleOcrService";
 import { emitProgress } from "../controllers/lease-controllers/extractProgressController";
 
 export { rotateImage, optimizeImageForOcr };
@@ -25,16 +25,69 @@ export interface OcrResult {
 
 /**
  * Clean, high-performance OCR Orchestrator Pipeline with timing metrics.
- * 1. Renders PDF pages into image buffers.
- * 2. Performs OSD orientation detection & canvas pre-rotation alignment.
- * 3. Primary Engine: PaddleOCR (PP-StructureV3 / Batch HTTP / Python).
- * 4. Fallback Engine: Tesseract.js (with per-page low-confidence orientation retry).
+ * 1. Primary Path: Direct PDF PaddleOCR microservice streaming (/ocr/pdf) for maximum throughput.
+ * 2. Fallback Path: Local PDF rendering, OSD detection, image prep, and Tesseract.js OCR.
  */
 export async function performOCR(filePath: string, trackingId?: string): Promise<OcrResult> {
   const ocrStartTime = performance.now();
   console.log(`[OCR Orchestrator] Starting processing for: ${filePath}`);
 
-  // Step 1: Render PDF pages to images
+  const paddleUrl = process.env.PADDLE_OCR_URL;
+
+  // PRIMARY HIGH-PERFORMANCE ATTEMPT: Direct PDF PaddleOCR
+  if (paddleUrl && fs.existsSync(filePath)) {
+    try {
+      if (trackingId) {
+        emitProgress(trackingId, {
+          stage: "ocr",
+          percentage: 30,
+          message: "Running primary OCR engine (PaddleOCR)...",
+        });
+      }
+
+      const engineStart = performance.now();
+      const paddleResult: PaddleOcrResult = await runPaddlePdfOCR(filePath, trackingId, false);
+      const ocrEngineTimeMs = Math.round(performance.now() - engineStart);
+
+      if (paddleResult.text && paddleResult.text.trim().length > 0) {
+        const totalOcrTimeMs = Math.round(performance.now() - ocrStartTime);
+        const timing: OcrTimingMetrics = {
+          pdfRenderTimeMs: 0,
+          osdTimeMs: 0,
+          imagePrepTimeMs: 0,
+          ocrEngineTimeMs,
+          totalOcrTimeMs,
+          pagesCount: paddleResult.pagesCount,
+          avgTimePerPageMs: paddleResult.avgTimePerPageMs,
+          engineUsed: "paddleocr",
+          detectedAngle: 0,
+        };
+
+        console.log(`✅ [OCR Orchestrator] Direct PDF PaddleOCR completed in ${totalOcrTimeMs}ms (${paddleResult.pagesCount} pages, avg ${paddleResult.avgTimePerPageMs}ms/page).`);
+
+        if (trackingId) {
+          emitProgress(trackingId, {
+            stage: "ocr",
+            percentage: 65,
+            message: `PaddleOCR extraction complete (${paddleResult.pagesCount} pages in ${(totalOcrTimeMs / 1000).toFixed(1)}s).`,
+            currentPage: paddleResult.pagesCount,
+            totalPages: paddleResult.pagesCount,
+          });
+        }
+
+        return {
+          text: paddleResult.text,
+          timing,
+        };
+      }
+    } catch (paddleErr: any) {
+      console.warn(
+        `⚠️ [OCR Orchestrator Warning] Direct PaddleOCR failed or unreachable (${paddleErr.message}). Initiating fallback pipeline...`
+      );
+    }
+  }
+
+  // FALLBACK PIPELINE: Render PDF pages locally & run Tesseract.js / base64 PaddleOCR
   const renderStartTime = performance.now();
   const { PDFParse } = await import("pdf-parse");
   const fileBuffer = fs.readFileSync(filePath);
@@ -53,7 +106,7 @@ export async function performOCR(filePath: string, trackingId?: string): Promise
     } catch {}
   }
   const pdfRenderTimeMs = Math.round(performance.now() - renderStartTime);
-  console.log(`[OCR Orchestrator] Rendered ${rawBuffers.length} page(s) at 1.5x scale in ${pdfRenderTimeMs}ms.`);
+  console.log(`[OCR Orchestrator Fallback] Rendered ${rawBuffers.length} page(s) at 1.5x scale in ${pdfRenderTimeMs}ms.`);
 
   // Step 2: Document OSD Orientation Detection
   const osdStartTime = performance.now();
@@ -62,7 +115,7 @@ export async function performOCR(filePath: string, trackingId?: string): Promise
   }
   const detectedAngle = await detectDocumentOrientation(rawBuffers[0]);
   const osdTimeMs = Math.round(performance.now() - osdStartTime);
-  console.log(`[OCR Orchestrator] OSD Orientation angle=${detectedAngle}° determined in ${osdTimeMs}ms.`);
+  console.log(`[OCR Orchestrator Fallback] OSD Orientation angle=${detectedAngle}° determined in ${osdTimeMs}ms.`);
 
   // Step 3: Optimize and Pre-Rotate Page Image Buffers
   const prepStartTime = performance.now();
@@ -73,32 +126,25 @@ export async function performOCR(filePath: string, trackingId?: string): Promise
   }
   const imagePrepTimeMs = Math.round(performance.now() - prepStartTime);
 
-  // Step 4: PRIMARY ATTEMPT - PaddleOCR (Batch Mode)
+  // Step 4: Try base64 PaddleOCR batch if configured
   let engineUsed: "paddleocr" | "tesseract" = "paddleocr";
   let ocrEngineTimeMs = 0;
   let ocrText = "";
 
-  try {
-    if (trackingId) {
-      emitProgress(trackingId, { stage: "ocr", percentage: 30, message: "Running primary OCR engine (PaddleOCR)..." });
-    }
-    const engineStart = performance.now();
-    // Pre-rotated images can skip redundant angle cls
-    const paddleResult: PaddleOcrResult = await runPaddleOCR(processedBuffers, trackingId, false);
-    ocrEngineTimeMs = Math.round(performance.now() - engineStart);
-
-    if (paddleResult.text && paddleResult.text.trim().length > 0) {
-      console.log(`✅ [OCR Orchestrator] Primary PaddleOCR completed in ${ocrEngineTimeMs}ms.`);
-      if (trackingId) {
-        emitProgress(trackingId, { stage: "ocr", percentage: 65, message: "PaddleOCR extraction complete." });
+  if (paddleUrl) {
+    try {
+      const engineStart = performance.now();
+      const paddleResult = await runPaddleOCR(processedBuffers, trackingId, false);
+      ocrEngineTimeMs = Math.round(performance.now() - engineStart);
+      if (paddleResult.text && paddleResult.text.trim().length > 0) {
+        ocrText = paddleResult.text;
       }
-      ocrText = paddleResult.text;
+    } catch (batchErr: any) {
+      console.warn(`⚠️ [OCR Orchestrator Warning] Batch PaddleOCR fallback failed (${batchErr.message}).`);
     }
-  } catch (paddleErr: any) {
-    console.warn(`⚠️ [OCR Orchestrator Warning] PaddleOCR failed or unreachable (${paddleErr.message}). Falling back to Tesseract.js...`);
   }
 
-  // Step 5: FALLBACK ATTEMPT - Tesseract.js (if PaddleOCR failed or gave empty text)
+  // Step 5: Tesseract.js Fallback
   if (!ocrText || ocrText.trim().length === 0) {
     engineUsed = "tesseract";
     const tesseractStart = performance.now();
@@ -132,4 +178,5 @@ export async function performOCR(filePath: string, trackingId?: string): Promise
     timing,
   };
 }
+
 

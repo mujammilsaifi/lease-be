@@ -8,3 +8,6 @@ astor
 decorator
 paddlepaddle==2.6.2
 paddleocr==2.7.3
+pypdfium2>=4.0.0
+python-multipart>=0.0.9
+
