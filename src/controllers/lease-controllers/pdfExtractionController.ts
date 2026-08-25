@@ -242,65 +242,20 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
 
     const targetFilePath = isPdf ? req.file.path : convertedPdfPath;
-    const fileBuffer = fs.readFileSync(targetFilePath);
 
     if (trackingId) {
       emitProgress(trackingId, {
-        stage: "extracting",
+        stage: "ocr",
         percentage: 20,
-        message: "Extracting text from document...",
+        message: "Performing OCR text extraction...",
       });
     }
 
-    let extractedText = "";
-    let pdfData;
-    let parser;
-    const pdfParseStartTime = performance.now();
-    try {
-      const { PDFParse } = await import("pdf-parse");
-      parser = new PDFParse({ data: fileBuffer });
-      pdfData = await parser.getText();
-    } catch (parseErr: any) {
-      throw new Error(`Failed to parse digital PDF: ${parseErr.message}`);
-    } finally {
-      if (parser) {
-        try {
-          await parser.destroy();
-        } catch {}
-      }
-    }
-    pdfParseDurationMs = Math.round(performance.now() - pdfParseStartTime);
-
-    extractedText = pdfData.text || "";
-
-    const numPages = pdfData.total || 1;
-    const avgCharsPerPage = extractedText.trim().length / numPages;
-
-    if (extractedText.trim().length < 1500 || avgCharsPerPage < 500) {
-      console.log(
-        `Extracted text density is low (Total: ${extractedText.trim().length}, Avg: ${Math.round(
-          avgCharsPerPage,
-        )} chars/page). Triggering OCR...`,
-      );
-      if (trackingId) {
-        emitProgress(trackingId, {
-          stage: "quality_check",
-          percentage: 30,
-          message: "Scanned layout detected. Starting OCR...",
-        });
-      }
-      const ocrResult = await performOCR(targetFilePath, trackingId);
-      extractedText = ocrResult.text;
-      ocrMetrics = ocrResult.timing;
-    } else {
-      if (trackingId) {
-        emitProgress(trackingId, {
-          stage: "quality_check",
-          percentage: 30,
-          message: "Text detected successfully.",
-        });
-      }
-    }
+    const ocrStartTime = performance.now();
+    const ocrResult = await performOCR(targetFilePath, trackingId);
+    let extractedText = ocrResult.text;
+    ocrMetrics = ocrResult.timing;
+    pdfParseDurationMs = Math.round(performance.now() - ocrStartTime);
 
     if (!extractedText.trim()) {
       throw new Error("No text content could be extracted from this document.");
@@ -315,7 +270,7 @@ export const extractPdfController = async (req: Request, res: Response) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");

@@ -8,20 +8,29 @@ interface ModelHealth {
 
 const modelHealthMap = new Map<string, ModelHealth>();
 
-// Default model cascade hierarchy for automatic fallback
+// Verified, active, and fast Google GenAI models only
 const DEFAULT_MODEL_CASCADE = [
-  "gemini-2.5-flash",
   "gemini-3.5-flash",
-  "gemini-3.7-flash",
-  "gemini-3.1-pro-preview",
+  "gemini-3.6-flash",
+  "gemini-2.5-flash",
   "gemini-3.5-flash-lite",
-  "gemini-flash-latest",
 ];
 
 function isTransientError(error: any): boolean {
   if (!error) return false;
   const msg = String(error.message || error.stack || error).toLowerCase();
   const status = error.status || error.statusCode || error.code;
+
+  // Non-retryable errors: fail fast immediately and cascade
+  if (
+    status === 404 ||
+    status === 400 ||
+    msg.includes("not found") ||
+    msg.includes("is not supported") ||
+    msg.includes("no longer available")
+  ) {
+    return false;
+  }
 
   if ([500, 502, 503, 504, 429].includes(status)) return true;
   if (
@@ -44,7 +53,7 @@ function isTransientError(error: any): boolean {
 }
 
 function getModelCascade(requestedModel: string): string[] {
-  const cascade = [requestedModel];
+  const cascade = [requestedModel || "gemini-3.5-flash"];
   for (const m of DEFAULT_MODEL_CASCADE) {
     if (!cascade.includes(m)) {
       cascade.push(m);
@@ -100,7 +109,7 @@ export async function callGemini(
   let lastError: any = null;
 
   for (const currentModel of candidateModels) {
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 2;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -139,7 +148,7 @@ export async function callGemini(
             `[Gemini Cost Estimate] Model: ${currentModel} | ` +
               `Input Tokens: ${inputTokens} | ` +
               `Output Tokens: ${outputTokens} | ` +
-              `Est. Cost: ₹${finalCostInr.toFixed(4)}`,
+              `Est. Cost: ?${finalCostInr.toFixed(4)}`,
           );
         }
 
@@ -154,18 +163,17 @@ export async function callGemini(
         );
 
         if (transient && attempt < MAX_RETRIES) {
-          // Exponential backoff: 1.5s, 3s, 5s
-          const backoffTime = attempt === 1 ? 1500 : attempt === 2 ? 3000 : 5000;
+          const backoffTime = 1500;
           console.log(`[Gemini AI Gateway] Transient overload error detected. Retrying model '${currentModel}' in ${backoffTime}ms...`);
           await delayMs(backoffTime);
         } else {
           recordFailure(currentModel);
-          break; // Move to next model in cascade
+          break; // Move immediately to next model in cascade
         }
       }
     }
 
-    console.warn(`[Gemini AI Gateway] Model '${currentModel}' exhausted retries. Auto-switching to next model in cascade...`);
+    console.warn(`[Gemini AI Gateway] Model '${currentModel}' exhausted. Auto-switching to next model in cascade...`);
   }
 
   console.error("[Gemini AI Gateway Critical Error] All model attempts and retries failed.", lastError);

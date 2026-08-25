@@ -63,7 +63,7 @@ export async function classifyIntent(
   try {
     const { text } = await callGemini(
       apiKey,
-      "gemini-2.5-flash",
+      "gemini-3.5-flash",
       prompt,
       true,
       systemInstructions,
