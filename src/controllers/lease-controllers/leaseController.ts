@@ -882,18 +882,23 @@ export const leaseTransferController: RequestHandler = async (req, res) => {
 /**
  * Get All Users Controller (Fetches from external Admin API)
  */
-// admin token
 export const getAllUsersController: RequestHandler = async (req, res) => {
   try {
-    const adminToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OThiMTczNTEyMWJmYzE0ZGEwYjA5YzkiLCJlbWFpbCI6ImRlbW9ybmJwcGx1c0BnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJhZG1pbklkIjpudWxsLCJmdWxsTmFtZSI6IkRlbW8gUk5CUCBQbHVzIExpbWl0ZWQiLCJzdWJSb2xlIjoiIiwidXNlckxpbWl0Ijo0LCJpc1NjaGVkdWxlT25seSI6dHJ1ZSwiaXNScHRPbmx5Ijp0cnVlLCJpc0xlYXNlT25seSI6dHJ1ZSwid2hpY2giOiIiLCJsb2NhdGlvbklkIjpudWxsLCJMb2NhdGlvbiI6IiIsImlhdCI6MTc4MjQ3ODA3MywiZXhwIjoxNzgyNTY0NDczfQ.bf6Af-mo8R_jJHUU6nqjY8YRUdwOgVcAKFWkzVnuBDo";
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "Unauthorized: No token provided" });
+    }
+
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader
+      : `Bearer ${authHeader}`;
     const apiUrl = "https://dev.schedule-api.finsensor.ai/api/v1/ex/user/users";
 
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${adminToken}`,
+        Authorization: token,
       },
     });
 
