@@ -1,3 +1,7 @@
+import {
+  getScheduleIIIDisclosureController,
+  getInformationDisclosureController,
+} from "../../controllers/lease-controllers/disclosureReportController";
 import express from "express";
 import {
   deleteLeaseController,
@@ -76,5 +80,17 @@ router.post("/lease_account_mapping", saveMapping);
 // Caching routes
 router.post("/lease-cache/fetch-bulk", fetchBulkCaches);
 router.post("/lease-cache/save-bulk", saveBulkCaches);
+
+
+// Schedule III Disclosure and Information Disclosure routes
+router.get("/reports/schedule-iii-disclosure", getScheduleIIIDisclosureController);
+router.post("/reports/schedule-iii-disclosure", getScheduleIIIDisclosureController);
+router.get("/lease/schedule-iii-disclosure", getScheduleIIIDisclosureController);
+router.post("/lease/schedule-iii-disclosure", getScheduleIIIDisclosureController);
+
+router.get("/reports/information-disclosure", getInformationDisclosureController);
+router.post("/reports/information-disclosure", getInformationDisclosureController);
+router.get("/lease/information-disclosure", getInformationDisclosureController);
+router.post("/lease/information-disclosure", getInformationDisclosureController);
 
 export default router;
