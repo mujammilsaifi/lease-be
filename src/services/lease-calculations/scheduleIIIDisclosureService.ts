@@ -351,10 +351,10 @@ export const generateScheduleIIIDisclosure = (
       key: `grouped-${idx}`,
       revisedNo: showMeta ? row.revisedNo : "",
       originalEntryNo: row.originalEntryNo,
-      narration: showMeta ? row.narration : "",
-      adjustmentType: showMeta ? row.adjustmentType : "",
-      tag: showMeta ? row.tag : "",
-      entryType: showMeta ? row.entryType : "",
+      narration: row.narration || "",
+      adjustmentType: row.adjustmentType || "",
+      tag: row.tag || "",
+      entryType: row.entryType || "",
     });
   });
 
