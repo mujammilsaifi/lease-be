@@ -21,7 +21,8 @@ export const generateInformationDisclosure = (
         m.particular === particular &&
         m.asset_type === assetType
     );
-    return mapping ? mapping.oi_code : "-";
+    const code = mapping?.oi_code?.trim();
+    return code && code !== "-" ? code : "";
   };
 
   const groupNaturesByOI = (
@@ -32,6 +33,7 @@ export const generateInformationDisclosure = (
     const groupMap = new Map<string, string[]>();
     naturesToGroup.forEach((nature) => {
       const code = getOiCode(category, particular, nature);
+      if (!code) return; // OI code is mandatory to display row
       if (!groupMap.has(code)) {
         groupMap.set(code, []);
       }
@@ -59,30 +61,32 @@ export const generateInformationDisclosure = (
   ];
 
   matCategories.forEach((cat) => {
-    contractualData.push({
-      key: cat.key,
-      particulars: cat.label,
-      isHeader: true,
-    });
-
     const groups = groupNaturesByOI("Contractual Maturities", cat.label, natures);
-    groups.forEach((group, gIdx) => {
-      const amount = allLeaseSummaries
-        .filter((item) => group.natures.includes(item.LeaseInfo?.natureOfLease))
-        .reduce(
-          (sum, item) => sum + (Number(item.ContractualMaturities?.[cat.key]) || 0),
-          0
-        );
-
+    if (groups.length > 0) {
       contractualData.push({
-        key: `${cat.key}-${gIdx}`,
-        particulars: ` - ${group.natures.join(", ")}`,
-        oiCode: group.oiCode,
-        amount: Math.round(amount).toLocaleString("en-IN"),
-        rawAmount: Math.round(amount),
-        isHeader: false,
+        key: cat.key,
+        particulars: cat.label,
+        isHeader: true,
       });
-    });
+
+      groups.forEach((group, gIdx) => {
+        const amount = allLeaseSummaries
+          .filter((item) => group.natures.includes(item.LeaseInfo?.natureOfLease))
+          .reduce(
+            (sum, item) => sum + (Number(item.ContractualMaturities?.[cat.key]) || 0),
+            0
+          );
+
+        contractualData.push({
+          key: `${cat.key}-${gIdx}`,
+          particulars: ` - ${group.natures.join(", ")}`,
+          oiCode: group.oiCode,
+          amount: Math.round(amount).toLocaleString("en-IN"),
+          rawAmount: Math.round(amount),
+          isHeader: false,
+        });
+      });
+    }
   });
 
   // 2. Lease Options Data
@@ -94,28 +98,30 @@ export const generateInformationDisclosure = (
   ];
 
   optCategories.forEach((cat) => {
-    optionsData.push({
-      key: cat.key,
-      particulars: cat.label,
-      isHeader: true,
-    });
-
     const groups = groupNaturesByOI("Lease Options", cat.label, natures);
-    groups.forEach((group, gIdx) => {
-      const count = allLeaseSummaries.filter(
-        (item) =>
-          group.natures.includes(item.LeaseInfo?.natureOfLease) &&
-          item.otherLeaseInformations?.[cat.key] === true
-      ).length;
-
+    if (groups.length > 0) {
       optionsData.push({
-        key: `${cat.key}-${gIdx}`,
-        particulars: ` - ${group.natures.join(", ")}`,
-        oiCode: group.oiCode,
-        count: count,
-        isHeader: false,
+        key: cat.key,
+        particulars: cat.label,
+        isHeader: true,
       });
-    });
+
+      groups.forEach((group, gIdx) => {
+        const count = allLeaseSummaries.filter(
+          (item) =>
+            group.natures.includes(item.LeaseInfo?.natureOfLease) &&
+            item.otherLeaseInformations?.[cat.key] === true
+        ).length;
+
+        optionsData.push({
+          key: `${cat.key}-${gIdx}`,
+          particulars: ` - ${group.natures.join(", ")}`,
+          oiCode: group.oiCode,
+          count: count,
+          isHeader: false,
+        });
+      });
+    }
   });
 
   // 3. Average Lease Period Data
