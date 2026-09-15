@@ -7,7 +7,7 @@ export const generateScheduleIIIDisclosure = (
   disclosureSettings: any[] = []
 ) => {
   if (!allLeaseSummaries || allLeaseSummaries.length === 0) {
-    return { entries: [], exportData: [] };
+    return { entries: [] };
   }
 
   const assetTypesInData = [
@@ -16,111 +16,104 @@ export const generateScheduleIIIDisclosure = (
 
   const entries: any[] = [
     {
-      revisedNo: "Entry 1",
-      no: "Entry 1",
+      entryNo: "Entry 1",
       narration: "Addition in Gross Block of ROU and Lease Liability during the period",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Addition in ROU and Lease Liability",
       color: "#00adef",
       lines: [
-        { originalEntryNo: "Entry 1", particular: "ROU Gross Block", key: "ROUGrossBlockMovement.addition", sign: "Same", column: "Addition" },
-        { originalEntryNo: "Entry 7", particular: "ROU Gross Block - Prepaid Rent", key: "PrepaidRentMovement.addition", sign: "Same", column: "Addition" },
-        { originalEntryNo: "Entry 1", particular: "Lease Liability", key: "leaseLiability.addition", sign: "Opposite", column: "Addition" },
-        { originalEntryNo: "Entry 7", particular: "Security Deposit", key: "PrepaidRentMovement.addition", sign: "Opposite", column: "" },
+        { particular: "ROU Gross Block", key: "ROUGrossBlockMovement.addition", sign: "Same", column: "Addition" },
+        { particular: "ROU Gross Block - Prepaid Rent", key: "PrepaidRentMovement.addition", sign: "Same", column: "Addition" },
+        { particular: "Lease Liability", key: "leaseLiability.addition", sign: "Opposite", column: "Addition" },
+        { particular: "Security Deposit", key: "PrepaidRentMovement.addition", sign: "Opposite", column: "" },
       ],
     },
     {
-      revisedNo: "Entry 2",
-      no: "Entry 2",
+      entryNo: "Entry 2",
       narration: "(Gain) / Loss on terminaltion of lease during the period",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "(Gain) / Loss on terminaltion",
       color: "#92d050",
       lines: [
-        { originalEntryNo: "Entry 2", particular: "Lease Liability", key: "leaseLiability.termination", sign: "Opposite", column: "Termination" },
-        { originalEntryNo: "Entry 2", particular: "ROU Gross Block", key: "ROUGrossBlockMovement.disposal", sign: "Same", column: "Disposal" },
-        { originalEntryNo: "Entry 8", particular: "ROU Gross Block - Prepaid Rent", key: "PrepaidRentMovement.disposal", sign: "Same", column: "Disposal" },
-        { originalEntryNo: "Entry 2", particular: "ROU Accumulated Depreciation", key: "ROUAccumlatedDepreciationMovement.disposalAccumulatedDepreciation", sign: "Opposite", column: "Disposal Accumulated Depreciation" },
-        { originalEntryNo: "Entry 8", particular: "ROU Accumulated Depreciation - Prepaid Rent", key: "PrepaidRentMovement.disposalAccumulatedDepreciation", sign: "Opposite", column: "Disposal Accumulated Depreciation" },
-        { originalEntryNo: "Entry 2", particular: "(Gain) / Loss on Termination", key: "profitLoss.ProfitLossonTermination", sign: "Same", column: "" },
-        { originalEntryNo: "Entry 8", particular: "(Gain) / Loss on Termination - Prepaid Rent", key: "profitLoss.ProfitLossOnTerminationPrepaidRent", sign: "Same", column: "" },
+        { particular: "Lease Liability", key: "leaseLiability.termination", sign: "Opposite", column: "Termination" },
+        { particular: "ROU Gross Block", key: "ROUGrossBlockMovement.disposal", sign: "Same", column: "Disposal" },
+        { particular: "ROU Gross Block - Prepaid Rent", key: "PrepaidRentMovement.disposal", sign: "Same", column: "Disposal" },
+        { particular: "ROU Accumulated Depreciation", key: "ROUAccumlatedDepreciationMovement.disposalAccumulatedDepreciation", sign: "Opposite", column: "Disposal Accumulated Depreciation" },
+        { particular: "ROU Accumulated Depreciation - Prepaid Rent", key: "PrepaidRentMovement.disposalAccumulatedDepreciation", sign: "Opposite", column: "Disposal Accumulated Depreciation" },
+        { particular: "(Gain) / Loss on Termination", key: "profitLoss.ProfitLossonTermination", sign: "Same", column: "" },
+        { particular: "(Gain) / Loss on Termination - Prepaid Rent", key: "profitLoss.ProfitLossOnTerminationPrepaidRent", sign: "Same", column: "" },
       ],
     },
     {
-      revisedNo: "Entry 3",
-      no: "Entry 3",
+      entryNo: "Entry 3",
       narration: "Interest and rent expense on lease liability during the period",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Interest & rent expenses on lease liability",
       color: "#0070c0",
       lines: [
-        { originalEntryNo: "Entry 3", particular: "Interest expense on lease liability", key: "leaseLiability.interest", sign: "Same", column: "Interest on Lease Liability for the period" },
-        { originalEntryNo: "Entry 4", particular: "Rent Expense", key: "leaseLiability.rentPaid", sign: "Same", column: "Rent Paid for the period" },
-        { originalEntryNo: "Entry 3 & 4", particular: "Lease Liability", key: "leaseLiability.interest", sign: "Opposite", column: "" },
-        { originalEntryNo: "Entry 3 & 4", particular: "Lease Liability", key: "leaseLiability.rentPaid", sign: "Opposite", column: "" },
+        { particular: "Interest expense on lease liability", key: "leaseLiability.interest", sign: "Same", column: "Interest on Lease Liability for the period" },
+        { particular: "Rent Expense", key: "leaseLiability.rentPaid", sign: "Same", column: "Rent Paid for the period" },
+        { particular: "Lease Liability", key: "leaseLiability.interest", sign: "Opposite", column: "" },
+        { particular: "Lease Liability", key: "leaseLiability.rentPaid", sign: "Opposite", column: "" },
       ],
     },
     {
-      revisedNo: "Entry 4",
-      no: "Entry 4",
+      entryNo: "Entry 4",
       narration: "Depreciation expense on ROU during the period",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Depreciation expense on ROU",
       color: "#ffff00",
       lines: [
-        { originalEntryNo: "Entry 5", particular: "Depreciation expense on Right of use", key: "ROUAccumlatedDepreciationMovement.depreciationForPeriod", sign: "Same", column: "Depreciation of the period" },
-        { originalEntryNo: "Entry 10", particular: "Depreciation expense on prepaid portion of security deposit", key: "PrepaidRentMovement.depreciationForPeriod", sign: "Same", column: "Depreciation of the period" },
-        { originalEntryNo: "Entry 5 & 10", particular: "ROU Accumulated Depreciation", key: "ROUAccumlatedDepreciationMovement.depreciationForPeriod", sign: "Opposite", column: "" },
-        { originalEntryNo: "Entry 5 & 10", particular: "ROU Accumulated Depreciation - Prepaid Rent", key: "PrepaidRentMovement.depreciationForPeriod", sign: "Opposite", column: "" },
+        { particular: "Depreciation expense on Right of use", key: "ROUAccumlatedDepreciationMovement.depreciationForPeriod", sign: "Same", column: "Depreciation of the period" },
+        { particular: "Depreciation expense on prepaid portion of security deposit", key: "PrepaidRentMovement.depreciationForPeriod", sign: "Same", column: "Depreciation of the period" },
+        { particular: "ROU Accumulated Depreciation", key: "ROUAccumlatedDepreciationMovement.depreciationForPeriod", sign: "Opposite", column: "" },
+        { particular: "ROU Accumulated Depreciation - Prepaid Rent", key: "PrepaidRentMovement.depreciationForPeriod", sign: "Opposite", column: "" },
       ],
     },
     {
-      revisedNo: "Entry 5",
-      no: "Entry 5",
+      entryNo: "Entry 5",
       narration: "(Gain) / Loss on modification of lease during the period",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "(Gain) / Loss on modification",
       color: "#ffc000",
       lines: [
-        { originalEntryNo: "Entry 6", particular: "Lease Liability", key: "leaseLiability.modification", sign: "Opposite", column: "Modification" },
-        { originalEntryNo: "Entry 6", particular: "ROU Gross Block", key: "ROUGrossBlockMovement.modification", sign: "Same", column: "Modification" },
-        { originalEntryNo: "Entry 6", particular: "(Gain) / Loss on Modification", key: "profitLoss.ProfitLossonModification", sign: "Opposite", column: "Gain / (Loss) on Modification" },
+        { particular: "Lease Liability", key: "leaseLiability.modification", sign: "Opposite", column: "Modification" },
+        { particular: "ROU Gross Block", key: "ROUGrossBlockMovement.modification", sign: "Same", column: "Modification" },
+        { particular: "(Gain) / Loss on Modification", key: "profitLoss.ProfitLossonModification", sign: "Opposite", column: "Gain / (Loss) on Modification" },
       ],
     },
     {
-      revisedNo: "Entry 6",
-      no: "Entry 6",
+      entryNo: "Entry 6",
       narration: "Unwinding of interest on security deposit",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Unwinding interest on security deposit",
       color: "#cfe2f3",
       lines: [
-        { originalEntryNo: "Entry 9", particular: "Security Deposit", key: "securityDeposit.UnwindingInterestOnSD", sign: "Same", column: "" },
-        { originalEntryNo: "Entry 9", particular: "Unwinding of interest on security deposit", key: "securityDeposit.UnwindingInterestOnSD", sign: "Opposite", column: "Unwinding of Interest for the period" },
+        { particular: "Security Deposit", key: "securityDeposit.UnwindingInterestOnSD", sign: "Same", column: "" },
+        { particular: "Unwinding of interest on security deposit", key: "securityDeposit.UnwindingInterestOnSD", sign: "Opposite", column: "Unwinding of Interest for the period" },
       ],
     },
     {
-      revisedNo: "Entry 8",
-      no: "Entry 8",
+      entryNo: "Entry 8",
       narration: "Inter - Unit received / transferred during the period",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Inter - Unit received / transferred",
       color: "#e6f7ff",
       lines: [
-        { originalEntryNo: "Entry 13", particular: "Lease Liability", key: "leaseLiability.iuTransferred", sign: "Opposite", column: "" },
-        { originalEntryNo: "Entry 13", particular: "ROU Gross Block", key: "ROUGrossBlockMovement.iuTransferred", sign: "Same", column: "" },
-        { originalEntryNo: "Entry 13", particular: "ROU Accumulated Depreciation", key: "ROUAccumlatedDepreciationMovement.iuTransferred", sign: "Opposite", column: "" },
-        { originalEntryNo: "Entry 13", particular: "ROU Gross Block - Prepaid Rent", key: "PrepaidRentMovement.iuTransferred", sign: "Same", column: "" },
-        { originalEntryNo: "Entry 13", particular: "ROU Accumulated Depreciation - Prepaid Rent", key: "PrepaidRentMovement.iuTransferredAD", sign: "Opposite", column: "" },
-        { originalEntryNo: "Entry 13", particular: "Security Deposit", key: "securityDeposit.securityDepositTransfer", sign: "Same", column: "" },
-        { originalEntryNo: "Entry 13", particular: "Inter Unit receivable / (Payable)", key: "special.iuBalancingFigure", sign: "Same", column: "" },
+        { particular: "Lease Liability", key: "leaseLiability.iuTransferred", sign: "Opposite", column: "" },
+        { particular: "ROU Gross Block", key: "ROUGrossBlockMovement.iuTransferred", sign: "Same", column: "" },
+        { particular: "ROU Accumulated Depreciation", key: "ROUAccumlatedDepreciationMovement.iuTransferred", sign: "Opposite", column: "" },
+        { particular: "ROU Gross Block - Prepaid Rent", key: "PrepaidRentMovement.iuTransferred", sign: "Same", column: "" },
+        { particular: "ROU Accumulated Depreciation - Prepaid Rent", key: "PrepaidRentMovement.iuTransferredAD", sign: "Opposite", column: "" },
+        { particular: "Security Deposit", key: "securityDeposit.securityDepositTransfer", sign: "Same", column: "" },
+        { particular: "Inter Unit receivable / (Payable)", key: "special.iuBalancingFigure", sign: "Same", column: "" },
       ],
     },
   ];
@@ -138,37 +131,35 @@ export const generateScheduleIIIDisclosure = (
 
   if (activeNonCurrent && !activeCurrent) {
     entries.push({
-      revisedNo: "Entry 7",
-      no: "Entry 7",
+      entryNo: "Entry 7",
       narration: "Current - Non Current of Lease Liability as at period end",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Current - Non Current of Lease Liability",
       color: "#d9d9d9",
       lines: [
-        { originalEntryNo: "Entry 11", particular: "Current Lease Liability", key: "reclass.liability", sign: "Opposite", column: "Current - Non Current of Lease Liability" },
-        { originalEntryNo: "Entry 11", particular: "Non-Current Lease Liability", key: "reclass.liability", sign: "Same", column: "" },
+        { particular: "Current Lease Liability", key: "reclass.liability", sign: "Opposite", column: "Current - Non Current of Lease Liability" },
+        { particular: "Non-Current Lease Liability", key: "reclass.liability", sign: "Same", column: "" },
       ],
     });
   } else if (activeCurrent && !activeNonCurrent) {
     entries.push({
-      revisedNo: "Entry 7",
-      no: "Entry 7",
+      entryNo: "Entry 7",
       narration: "Current - Non Current of Lease Liability as at period end",
       adjustmentType: "GAAP adjustments",
       tag: "Rucurring",
       entryType: "Current - Non Current of Lease Liability",
       color: "#d9d9d9",
       lines: [
-        { originalEntryNo: "Entry 11", particular: "Current Lease Liability", key: "reclass.liability", sign: "Same", column: "Current - Non Current of Lease Liability" },
-        { originalEntryNo: "Entry 11", particular: "Non-Current Lease Liability", key: "reclass.liability", sign: "Opposite", column: "" },
+        { particular: "Current Lease Liability", key: "reclass.liability", sign: "Same", column: "Current - Non Current of Lease Liability" },
+        { particular: "Non-Current Lease Liability", key: "reclass.liability", sign: "Opposite", column: "" },
       ],
     });
   }
 
   entries.sort((a, b) => {
-    const numA = parseInt(a.revisedNo.replace("Entry ", ""));
-    const numB = parseInt(b.revisedNo.replace("Entry ", ""));
+    const numA = parseInt(a.entryNo.replace("Entry ", ""));
+    const numB = parseInt(b.entryNo.replace("Entry ", ""));
     return numA - numB;
   });
 
@@ -176,7 +167,7 @@ export const generateScheduleIIIDisclosure = (
 
   entries.forEach((entry) => {
     const entrySetting: any = disclosureSettings.find(
-      (s: any) => s.entryNo === entry.no
+      (s: any) => s.entryNo === entry.entryNo
     );
 
     const natureGroups = groupNaturesByMapping(
@@ -191,12 +182,12 @@ export const generateScheduleIIIDisclosure = (
 
         if (
           line.particular === "Current Lease Liability" &&
-          entry.revisedNo === "Entry 7"
+          entry.entryNo === "Entry 7"
         ) {
           accTypeForMapping = "Current Lease Liability";
         } else if (
           line.particular === "Non-Current Lease Liability" &&
-          entry.revisedNo === "Entry 7"
+          entry.entryNo === "Entry 7"
         ) {
           accTypeForMapping = "Non-Current Lease Liability";
         } else if (accTypeForMapping === "Lease Liability") {
@@ -254,7 +245,7 @@ export const generateScheduleIIIDisclosure = (
           }, 0);
         } else {
           rawAmt = groupData.reduce((sum, item) => {
-            const isStandardEntry = ["Entry 1", "Entry 2", "Entry 7"].includes(entry.no);
+            const isStandardEntry = ["Entry 1", "Entry 2", "Entry 7"].includes(entry.entryNo);
             if (isStandardEntry && item.LeaseInfo?.iuStatus === "IU Transferred") {
               return sum;
             }
@@ -298,39 +289,53 @@ export const generateScheduleIIIDisclosure = (
 
         const finalAmount = (line.sign === "Opposite" ? -1 : 1) * rawAmt;
 
+        const cocCode = mapping?.coc_code?.trim() || "";
+        const cocName = mapping?.coc_name?.trim() || "";
+        let cocDisplay = "";
+        if (cocName && cocCode) {
+          cocDisplay = `${cocName} / ${cocCode}`;
+        } else if (cocName || cocCode) {
+          cocDisplay = cocName || cocCode;
+        }
+
+        const glCode = mapping?.gl_code?.trim() || "";
+        const glName = mapping?.gl_name?.trim() || "";
+        let glDisplay = "";
+        if (glName && glCode) {
+          glDisplay = `${glName} / ${glCode}`;
+        } else if (glName || glCode) {
+          glDisplay = glName || glCode;
+        }
+
         result.push({
-          revisedNo: entry.revisedNo,
-          originalEntryNo: line.originalEntryNo || entry.no,
-          entryNo: entry.no,
+          entryNo: entry.entryNo,
           narration: entrySetting?.narration || entry.narration,
           particular:
             line.particular === "Lease Liability"
               ? accTypeForMapping
               : line.particular,
-          coc: mapping?.coc_code
-            ? `${mapping?.coc_name} / ${mapping?.coc_code}`
-            : "-",
-          gl: mapping?.gl_code
-            ? `${mapping?.gl_name} / ${mapping?.gl_code}`
-            : "-",
-          cocCode: mapping?.coc_code || "-",
-          glCode: mapping?.gl_code || "-",
+          coc: cocDisplay,
+          gl: glDisplay,
+          cocCode: cocCode,
+          glCode: glCode,
           amount: finalAmount,
-          sign: line.sign,
-          columnOfReport: line.column,
           color: entry.color || "transparent",
-          adjustmentType: entrySetting?.adjustment_type || entry.adjustmentType || "-",
-          tag: entrySetting?.tag || entry.tag || "-",
-          entryType: entrySetting?.entry_type || entry.entryType || "-",
+          adjustmentType: entrySetting?.adjustment_type || entry.adjustmentType || "",
+          tag: entrySetting?.tag || entry.tag || "",
+          entryType: entrySetting?.entry_type || entry.entryType || "",
         });
       });
     });
   });
 
-  // Second pass: Group by revisedNo + originalEntryNo + particular + cocCode + glCode
+  // Second pass: Group by entryNo + particular + cocCode + glCode
   const groupedResultMap = new Map();
   result.forEach((row) => {
-    const key = `${row.revisedNo}|${row.originalEntryNo}|${row.particular}|${row.cocCode}|${row.glCode}`;
+    // Only return objects that have a valid cocCode
+    if (!row.cocCode || !row.cocCode.trim() || row.cocCode.trim() === "-") {
+      return;
+    }
+    const key = `${row.entryNo}|${row.particular}|${row.cocCode}|${row.glCode}`;
     if (!groupedResultMap.has(key)) {
       groupedResultMap.set(key, { ...row });
     } else {
@@ -340,45 +345,18 @@ export const generateScheduleIIIDisclosure = (
 
   const groupedResult = Array.from(groupedResultMap.values());
 
-  const finalResult: any[] = [];
-  const seenEntries = new Set();
-  groupedResult.forEach((row, idx) => {
-    const showMeta = !seenEntries.has(row.revisedNo);
-    if (showMeta) seenEntries.add(row.revisedNo);
-
-    finalResult.push({
-      ...row,
-      key: `grouped-${idx}`,
-      revisedNo: showMeta ? row.revisedNo : "",
-      originalEntryNo: row.originalEntryNo,
-      narration: row.narration || "",
-      adjustmentType: row.adjustmentType || "",
-      tag: row.tag || "",
-      entryType: row.entryType || "",
-    });
-  });
-
-  const exportData = finalResult.map((row: any) => {
-    const [cocName, cocCode] = (row.coc || "").split(" / ");
-    const [glName, glCode] = (row.gl || "").split(" / ");
-
-    return {
-      "Entry No": row.revisedNo || "",
-      "Particular": row.particular || "",
-      "Adjustment Type": row.adjustmentType || "",
-      "GL Code": glCode || row.glCode || "",
-      "GL Name": glName || "",
-      "CoC Code": cocCode || row.cocCode || "",
-      "CoC Name": cocName || "",
-      "Amount": Math.round(row.amount),
-      "Narration": row.narration || "",
-      "Tag": row.tag || "",
-      "Entry Type": row.entryType || "",
-    };
-  });
+  const finalResult = groupedResult.map((row, idx) => ({
+    ...row,
+    key: `grouped-${idx}`,
+    entryNo: row.entryNo,
+    amount: Number(Number(row.amount || 0).toFixed(2)),
+    narration: row.narration || "",
+    adjustmentType: row.adjustmentType || "",
+    tag: row.tag || "",
+    entryType: row.entryType || "",
+  }));
 
   return {
     entries: finalResult,
-    exportData,
   };
 };

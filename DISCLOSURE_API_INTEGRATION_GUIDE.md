@@ -78,8 +78,6 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/schedule-iii-di
     },
     "entries": [
       {
-        "revisedNo": "Entry 1",
-        "originalEntryNo": "Entry 1",
         "entryNo": "Entry 1",
         "narration": "Addition in Gross Block of ROU and Lease Liability during the period",
         "particular": "ROU Gross Block",
@@ -88,28 +86,11 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/schedule-iii-di
         "cocCode": "1001",
         "glCode": "5001",
         "amount": 171897490.73,
-        "sign": "Same",
-        "columnOfReport": "Addition",
         "color": "#00adef",
         "adjustmentType": "GAAP adjustments",
         "tag": "Rucurring",
         "entryType": "Addition in ROU and Lease Liability",
         "key": "grouped-0"
-      }
-    ],
-    "exportData": [
-      {
-        "Entry No": "Entry 1",
-        "Particular": "ROU Gross Block",
-        "Adjustment Type": "GAAP adjustments",
-        "GL Code": "5001",
-        "GL Name": "GL Name",
-        "CoC Code": "1001",
-        "CoC Name": "COC Name",
-        "Amount": 171897491,
-        "Narration": "Addition in Gross Block of ROU and Lease Liability during the period",
-        "Tag": "Rucurring",
-        "Entry Type": "Addition in ROU and Lease Liability"
       }
     ]
   },
@@ -122,8 +103,7 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/schedule-iii-di
 }
 ```
 
-* `data.entries`: Ready for Ant Design / HTML table rendering (matches frontend table).
-* `data.exportData`: Formatted with rounded amounts and headers ready for direct Excel export (matches frontend Excel download).
+* `data.entries`: Standardized accounting entries with valid CoC codes ready for UI table rendering and export.
 
 ---
 
@@ -244,7 +224,7 @@ export const fetchScheduleIIIDisclosure = async (startDate: string, endDate: str
     presentationPeriod: { from: startDate, to: endDate },
     userId,
   });
-  return response.data; // { success: true, data: { entries, exportData }, ... }
+  return response.data; // { success: true, data: { entries }, ... }
 };
 
 // 2. Fetch Information Disclosure from Backend

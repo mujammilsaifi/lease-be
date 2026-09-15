@@ -97,7 +97,6 @@ export const getScheduleIIIDisclosureController = async (
       data: {
         presentationPeriod: period,
         entries: disclosureResult.entries,
-        exportData: disclosureResult.exportData,
       },
       metadata: {
         totalLeasesProcessed: summaryResult.totalLeasesProcessed,
