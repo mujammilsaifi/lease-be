@@ -93,6 +93,22 @@ This document outlines the modifications made to the Schedule III Disclosure API
 
 ## Modified Files
 1. `src/services/lease-calculations/scheduleIIIDisclosureService.ts`
-2. `src/controllers/lease-controllers/disclosureReportController.ts`
-3. `DISCLOSURE_API_INTEGRATION_GUIDE.md`
-4. `SCHEDULE_III_DISCLOSURE_CHANGES.md` (new)
+2. `src/services/lease-calculations/informationDisclosureService.ts`
+3. `src/controllers/lease-controllers/disclosureReportController.ts`
+4. `DISCLOSURE_API_INTEGRATION_GUIDE.md`
+5. `SCHEDULE_III_DISCLOSURE_CHANGES.md`
+
+---
+
+## 6. Information Disclosure (Notes) - Mandatory OI Code
+- **Endpoint**: `/api/v1/reports/information-disclosure` & `/api/v1/lease/information-disclosure`
+- **Rule**: An **OI Code** is strictly mandatory for any item to be returned in the response.
+- **Behavior**:
+  - Unmapped asset types or those with empty string `""` or `"-"` are completely skipped.
+  - Applies across all 5 disclosure sections:
+    1. `contractualData` (Contractual maturities)
+    2. `optionsData` (Lease options count)
+    3. `averagePeriodData` (Average lease period)
+    4. `averageRemainingPeriodData` (Average remaining lease period)
+    5. `interestRateData` (Effective interest rate ranges)
+  - If a maturity or option category has zero mapped natures, its section header is also suppressed.

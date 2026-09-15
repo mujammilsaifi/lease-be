@@ -17,9 +17,9 @@ export const generateInformationDisclosure = (
   const getOiCode = (category: string, particular: string, assetType: string) => {
     const mapping = oiMappings.find(
       (m: any) =>
-        m.category === category &&
-        m.particular === particular &&
-        m.asset_type === assetType
+        m.category?.trim() === category?.trim() &&
+        m.particular?.trim() === particular?.trim() &&
+        m.asset_type?.trim() === assetType?.trim()
     );
     const code = mapping?.oi_code?.trim();
     return code && code !== "-" ? code : "";
@@ -33,7 +33,7 @@ export const generateInformationDisclosure = (
     const groupMap = new Map<string, string[]>();
     naturesToGroup.forEach((nature) => {
       const code = getOiCode(category, particular, nature);
-      if (!code) return; // OI code is mandatory to display row
+      if (!code || code === "-") return; // OI code is mandatory to include object in response
       if (!groupMap.has(code)) {
         groupMap.set(code, []);
       }

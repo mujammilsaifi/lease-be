@@ -156,7 +156,7 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/information-dis
       {
         "key": "within1Year-0",
         "particulars": " - Building, Vehicle",
-        "oiCode": "-",
+        "oiCode": "OI-101",
         "amount": "9,72,08,723",
         "rawAmount": 97208723,
         "isHeader": false
@@ -171,7 +171,7 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/information-dis
       {
         "key": "extensionOption-0",
         "particulars": " - Building",
-        "oiCode": "-",
+        "oiCode": "OI-201",
         "count": 0,
         "isHeader": false
       }
@@ -180,7 +180,7 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/information-dis
       {
         "key": "avg-0",
         "nature": "Building",
-        "oiCode": "-",
+        "oiCode": "OI-301",
         "avgPeriod": "4.53"
       }
     ],
@@ -188,7 +188,7 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/information-dis
       {
         "key": "avg-rem-0",
         "nature": "Building",
-        "oiCode": "-",
+        "oiCode": "OI-401",
         "avgRemainingPeriod": "2.67"
       }
     ],
@@ -196,7 +196,7 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/information-dis
       {
         "key": "int-0",
         "nature": "Building",
-        "oiCode": "-",
+        "oiCode": "OI-501",
         "range": "10.00 - 10.00"
       }
     ]
@@ -208,6 +208,9 @@ curl -X POST https://lease-dev-build.finsensor.ai/api/v1/reports/information-dis
   }
 }
 ```
+
+> **Note on OI Code Filtering**:  
+> An **OI Code** is mandatory for an item to appear in the Information Disclosure response. Any lease asset type that does not have an active OI code mapped in Account Mapping is excluded from all 5 disclosure sections (`contractualData`, `optionsData`, `averagePeriodData`, `averageRemainingPeriodData`, `interestRateData`).
 
 ---
 
